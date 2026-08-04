@@ -1,0 +1,8 @@
+.DS_Store
+Thumbs.db
+.build/
+.swiftpm/
+DerivedData/
+.vs/
+cmake-build-*/
+dist/

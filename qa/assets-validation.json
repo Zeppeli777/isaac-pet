@@ -1,0 +1,398 @@
+{
+  "ok": true,
+  "atlas": "Resources/spritesheet.webp",
+  "size": [
+    1536,
+    2288
+  ],
+  "source": [
+    "Assets/Source/isaac-character-sheet.png",
+    "Assets/Source/isaac-appearance.png"
+  ],
+  "direction_cells": [
+    {
+      "index": 0,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 1,
+      "components": 1,
+      "bbox": [
+        40,
+        50,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 2,
+      "components": 1,
+      "bbox": [
+        40,
+        50,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 3,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 4,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 5,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 6,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 7,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 8,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 9,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 10,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 11,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 12,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 13,
+      "components": 1,
+      "bbox": [
+        40,
+        50,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 14,
+      "components": 1,
+      "bbox": [
+        40,
+        50,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    },
+    {
+      "index": 15,
+      "components": 1,
+      "bbox": [
+        40,
+        46,
+        152,
+        180
+      ],
+      "matches_composed_cell": true
+    }
+  ],
+  "shooting_atlas": {
+    "path": "Resources/shooting-atlas.webp",
+    "size": [
+      768,
+      208
+    ],
+    "order": [
+      "up-flat-back",
+      "right-closed",
+      "down-closed",
+      "left-closed"
+    ],
+    "source_head_x": [
+      160,
+      96,
+      32,
+      96
+    ],
+    "cells": [
+      {
+        "index": 0,
+        "components": 1,
+        "bbox": [
+          40,
+          50,
+          152,
+          180
+        ],
+        "matches_composed_cell": true
+      },
+      {
+        "index": 1,
+        "components": 1,
+        "bbox": [
+          40,
+          50,
+          152,
+          180
+        ],
+        "matches_composed_cell": true
+      },
+      {
+        "index": 2,
+        "components": 1,
+        "bbox": [
+          40,
+          50,
+          152,
+          180
+        ],
+        "matches_composed_cell": true
+      },
+      {
+        "index": 3,
+        "components": 1,
+        "bbox": [
+          40,
+          50,
+          152,
+          180
+        ],
+        "matches_composed_cell": true
+      }
+    ]
+  },
+  "vertical_walking_atlas": {
+    "path": "Resources/walking-vertical-atlas.webp",
+    "size": [
+      768,
+      416
+    ],
+    "order": [
+      "down-front-head",
+      "up-back-head"
+    ],
+    "source_body_cells": {
+      "down": [
+        [
+          448,
+          0
+        ],
+        [
+          480,
+          0
+        ],
+        [
+          448,
+          0
+        ],
+        [
+          480,
+          0
+        ]
+      ],
+      "up": [
+        [
+          256,
+          96
+        ],
+        [
+          288,
+          96
+        ],
+        [
+          256,
+          96
+        ],
+        [
+          288,
+          96
+        ]
+      ]
+    },
+    "cells": {
+      "down": [
+        {
+          "index": 0,
+          "components": 1,
+          "bbox": [
+            40,
+            14,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 1,
+          "components": 1,
+          "bbox": [
+            40,
+            18,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 2,
+          "components": 1,
+          "bbox": [
+            40,
+            14,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 3,
+          "components": 1,
+          "bbox": [
+            40,
+            18,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        }
+      ],
+      "up": [
+        {
+          "index": 0,
+          "components": 1,
+          "bbox": [
+            40,
+            22,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 1,
+          "components": 1,
+          "bbox": [
+            40,
+            22,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 2,
+          "components": 1,
+          "bbox": [
+            40,
+            22,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 3,
+          "components": 1,
+          "bbox": [
+            40,
+            22,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        }
+      ]
+    }
+  }
+}
