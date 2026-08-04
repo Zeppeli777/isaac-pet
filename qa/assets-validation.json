@@ -9,6 +9,16 @@
     "Assets/Source/isaac-character-sheet.png",
     "Assets/Source/isaac-appearance.png"
   ],
+  "scale_consistency": {
+    "target_visible_width": 112,
+    "idle_bbox": [
+      40,
+      48,
+      152,
+      180
+    ],
+    "contact_sheet": "qa/scale-contact-sheet.png"
+  },
   "direction_cells": [
     {
       "index": 0,
@@ -252,6 +262,191 @@
       }
     ]
   },
+  "horizontal_walking": {
+    "target_visible_width": 112,
+    "cells": {
+      "right": [
+        {
+          "index": 0,
+          "components": 1,
+          "bbox": [
+            35,
+            50,
+            147,
+            182
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 1,
+          "components": 1,
+          "bbox": [
+            37,
+            48,
+            149,
+            180
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 2,
+          "components": 1,
+          "bbox": [
+            39,
+            49,
+            151,
+            181
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 3,
+          "components": 1,
+          "bbox": [
+            42,
+            48,
+            154,
+            180
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 4,
+          "components": 1,
+          "bbox": [
+            45,
+            50,
+            157,
+            182
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 5,
+          "components": 1,
+          "bbox": [
+            43,
+            48,
+            155,
+            180
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 6,
+          "components": 1,
+          "bbox": [
+            41,
+            49,
+            153,
+            181
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 7,
+          "components": 1,
+          "bbox": [
+            38,
+            48,
+            150,
+            180
+          ],
+          "matches_normalized_cell": true
+        }
+      ],
+      "left": [
+        {
+          "index": 0,
+          "components": 1,
+          "bbox": [
+            45,
+            50,
+            157,
+            182
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 1,
+          "components": 1,
+          "bbox": [
+            43,
+            48,
+            155,
+            180
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 2,
+          "components": 1,
+          "bbox": [
+            41,
+            49,
+            153,
+            181
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 3,
+          "components": 1,
+          "bbox": [
+            38,
+            48,
+            150,
+            180
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 4,
+          "components": 1,
+          "bbox": [
+            35,
+            50,
+            147,
+            182
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 5,
+          "components": 1,
+          "bbox": [
+            37,
+            48,
+            149,
+            180
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 6,
+          "components": 1,
+          "bbox": [
+            39,
+            49,
+            151,
+            181
+          ],
+          "matches_normalized_cell": true
+        },
+        {
+          "index": 7,
+          "components": 1,
+          "bbox": [
+            42,
+            48,
+            154,
+            180
+          ],
+          "matches_normalized_cell": true
+        }
+      ]
+    }
+  },
   "vertical_walking_atlas": {
     "path": "Resources/walking-vertical-atlas.webp",
     "size": [
@@ -307,7 +502,7 @@
           "components": 1,
           "bbox": [
             40,
-            14,
+            46,
             152,
             180
           ],
@@ -318,7 +513,7 @@
           "components": 1,
           "bbox": [
             40,
-            18,
+            46,
             152,
             180
           ],
@@ -329,7 +524,7 @@
           "components": 1,
           "bbox": [
             40,
-            14,
+            46,
             152,
             180
           ],
@@ -340,7 +535,7 @@
           "components": 1,
           "bbox": [
             40,
-            18,
+            46,
             152,
             180
           ],
@@ -353,7 +548,7 @@
           "components": 1,
           "bbox": [
             40,
-            22,
+            46,
             152,
             180
           ],
@@ -364,7 +559,7 @@
           "components": 1,
           "bbox": [
             40,
-            22,
+            46,
             152,
             180
           ],
@@ -375,7 +570,7 @@
           "components": 1,
           "bbox": [
             40,
-            22,
+            46,
             152,
             180
           ],
@@ -386,7 +581,7 @@
           "components": 1,
           "bbox": [
             40,
-            22,
+            46,
             152,
             180
           ],

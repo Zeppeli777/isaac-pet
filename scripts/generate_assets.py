@@ -18,6 +18,8 @@ CELL_W, CELL_H = 192, 208
 ATLAS_SIZE = (CELL_W * 8, CELL_H * 11)
 VERTICAL_WALK_COLUMNS = 4
 VERTICAL_WALK_ROWS = 2
+WALK_TARGET_WIDTH = 112
+WALK_HEAD_TOP = 46
 
 
 def nearest(image: Image.Image, scale: int) -> Image.Image:
@@ -60,18 +62,46 @@ def connected_components(image: Image.Image) -> int:
     return components
 
 
-def make_direction_cell(head: Image.Image, body: Image.Image) -> Image.Image:
+def make_direction_cell(
+    head: Image.Image,
+    body: Image.Image,
+    fixed_head_top: int | None = None,
+) -> Image.Image:
     canvas = Image.new("RGBA", (CELL_W, CELL_H), (0, 0, 0, 0))
     scaled_body = nearest(body, 4)
     scaled_head = nearest(head, 4)
     body_x = (CELL_W - scaled_body.width) // 2
     body_y = CELL_H - scaled_body.height - 28
-    # A deliberate eight-pixel overlap reconnects the original head and lower-body components.
     head_x = (CELL_W - scaled_head.width) // 2
-    head_y = body_y - scaled_head.height + 10
+    # Normal direction poses use a small overlap. Vertical walking bodies include more torso,
+    # so their head is registered to the shared top edge and the torso sits behind it.
+    head_y = fixed_head_top if fixed_head_top is not None else body_y - scaled_head.height + 10
     canvas.alpha_composite(scaled_body, (body_x, body_y))
     canvas.alpha_composite(scaled_head, (head_x, head_y))
     return canvas
+
+
+def normalize_walking_row(atlas: Image.Image, row: int, frame_count: int) -> list[Image.Image]:
+    """Bring legacy three-pixel walking art up to the four-pixel idle/look scale."""
+    normalized: list[Image.Image] = []
+    for column in range(frame_count):
+        left = column * CELL_W
+        top = row * CELL_H
+        cell = atlas.crop((left, top, left + CELL_W, top + CELL_H))
+        box = cell.getbbox()
+        if not box:
+            raise SystemExit(f"walking row {row} frame {column} is empty")
+        sprite = cell.crop(box)
+        target_height = round(sprite.height * WALK_TARGET_WIDTH / sprite.width)
+        resized = sprite.resize((WALK_TARGET_WIDTH, target_height), Image.Resampling.NEAREST)
+        source_center_x = (box[0] + box[2]) / 2
+        target_x = round(source_center_x - WALK_TARGET_WIDTH / 2)
+        target_y = box[3] - target_height
+        output = Image.new("RGBA", (CELL_W, CELL_H), (0, 0, 0, 0))
+        output.alpha_composite(resized, (target_x, target_y))
+        atlas.paste(output, (left, top))
+        normalized.append(output)
+    return normalized
 
 
 def make_icons(base: Image.Image) -> None:
@@ -149,8 +179,14 @@ def make_vertical_walking_atlas(source_sheet: Image.Image) -> dict[str, list[Ima
         "up": source_head(source_sheet, 128),        # normal back of head
     }
     rows = {
-        direction: [make_direction_cell(heads[direction], source_body(source_sheet, x, y))
-                    for x, y in cells]
+        direction: [
+            make_direction_cell(
+                heads[direction],
+                source_body(source_sheet, x, y),
+                fixed_head_top=WALK_HEAD_TOP,
+            )
+            for x, y in cells
+        ]
         for direction, cells in source_cells.items()
     }
 
@@ -178,6 +214,36 @@ def make_vertical_walking_atlas(source_sheet: Image.Image) -> dict[str, list[Ima
     return rows
 
 
+def make_scale_contact_sheet(atlas: Image.Image, vertical_atlas: Image.Image) -> None:
+    frames = [
+        ("idle", atlas.crop((0, 0, CELL_W, CELL_H))),
+        ("static right", atlas.crop((4 * CELL_W, 9 * CELL_H, 5 * CELL_W, 10 * CELL_H))),
+        ("static down", atlas.crop((0, 10 * CELL_H, CELL_W, 11 * CELL_H))),
+        ("static up", atlas.crop((0, 9 * CELL_H, CELL_W, 10 * CELL_H))),
+        ("walk right", atlas.crop((0, CELL_H, CELL_W, 2 * CELL_H))),
+        ("walk left", atlas.crop((0, 2 * CELL_H, CELL_W, 3 * CELL_H))),
+        ("walk down", vertical_atlas.crop((0, 0, CELL_W, CELL_H))),
+        ("walk up", vertical_atlas.crop((0, CELL_H, CELL_W, 2 * CELL_H))),
+    ]
+    sheet = Image.new("RGBA", (CELL_W * 4, CELL_H * 2), (35, 35, 42, 255))
+    draw = ImageDraw.Draw(sheet)
+    for index, (label, cell) in enumerate(frames):
+        row, column = divmod(index, 4)
+        x = column * CELL_W
+        y = row * CELL_H
+        sheet.alpha_composite(cell, (x, y))
+        box = cell.getbbox()
+        if box:
+            width = box[2] - box[0]
+            height = box[3] - box[1]
+            draw.rectangle(
+                (x + box[0], y + box[1], x + box[2] - 1, y + box[3] - 1),
+                outline=(92, 220, 126, 255),
+            )
+            draw.text((x + 6, y + 6), f"{label} {width}x{height}", fill=(255, 255, 255, 255))
+    sheet.save(QA / "scale-contact-sheet.png")
+
+
 def main() -> None:
     RESOURCES.mkdir(parents=True, exist_ok=True)
     QA.mkdir(parents=True, exist_ok=True)
@@ -186,6 +252,11 @@ def main() -> None:
     atlas = Image.open(RESOURCES / "spritesheet-source.webp").convert("RGBA")
     if atlas.size != ATLAS_SIZE:
         raise SystemExit(f"unexpected atlas dimensions: {atlas.size}")
+
+    horizontal_walking_cells = {
+        "right": normalize_walking_row(atlas, 1, 8),
+        "left": normalize_walking_row(atlas, 2, 8),
+    }
 
     # Eight stable Isaac look poses, duplicated into the 16 directional slots.
     # The source atlas contains the previous approximate look rows. Clear them completely before
@@ -237,11 +308,27 @@ def main() -> None:
         ]
         for row, direction in enumerate(("down", "up"))
     }
+    final_horizontal_walking_cells = {
+        direction: [
+            atlas.crop(
+                (column * CELL_W, row * CELL_H, (column + 1) * CELL_W, (row + 1) * CELL_H)
+            )
+            for column in range(8)
+        ]
+        for row, direction in ((1, "right"), (2, "left"))
+    }
+    make_scale_contact_sheet(atlas, final_vertical_walking_atlas)
+    idle_bbox = atlas.crop((0, 0, CELL_W, CELL_H)).getbbox()
     validation = {
         "ok": True,
         "atlas": "Resources/spritesheet.webp",
         "size": list(atlas.size),
         "source": ["Assets/Source/isaac-character-sheet.png", "Assets/Source/isaac-appearance.png"],
+        "scale_consistency": {
+            "target_visible_width": WALK_TARGET_WIDTH,
+            "idle_bbox": list(idle_bbox or (0, 0, 0, 0)),
+            "contact_sheet": "qa/scale-contact-sheet.png",
+        },
         "direction_cells": [
             {
                 "index": i,
@@ -265,6 +352,23 @@ def main() -> None:
                 }
                 for index, cell in enumerate(final_shooting_cells)
             ],
+        },
+        "horizontal_walking": {
+            "target_visible_width": WALK_TARGET_WIDTH,
+            "cells": {
+                direction: [
+                    {
+                        "index": index,
+                        "components": connected_components(cell),
+                        "bbox": list(cell.getbbox() or (0, 0, 0, 0)),
+                        "matches_normalized_cell": (
+                            cell.tobytes() == horizontal_walking_cells[direction][index].tobytes()
+                        ),
+                    }
+                    for index, cell in enumerate(final_horizontal_walking_cells[direction])
+                ]
+                for direction in ("right", "left")
+            },
         },
         "vertical_walking_atlas": {
             "path": "Resources/walking-vertical-atlas.webp",
@@ -292,16 +396,35 @@ def main() -> None:
         item["components"] == 1 and item["matches_composed_cell"]
         for item in validation["direction_cells"]
     ) and all(
+        item["bbox"][2] - item["bbox"][0] == WALK_TARGET_WIDTH
+        and item["bbox"][3] == 180
+        for item in validation["direction_cells"]
+    ) and all(
         item["components"] == 1 and item["matches_composed_cell"]
         for item in validation["shooting_atlas"]["cells"]
+    ) and all(
+        item["components"] == 1
+        and item["matches_normalized_cell"]
+        and item["bbox"][2] - item["bbox"][0] == WALK_TARGET_WIDTH
+        and item["bbox"][3] - item["bbox"][1] == 132
+        and 180 <= item["bbox"][3] <= 182
+        for direction in ("right", "left")
+        for item in validation["horizontal_walking"]["cells"][direction]
     ) and all(
         item["components"] == 1 and item["matches_composed_cell"]
         for direction in ("down", "up")
         for item in validation["vertical_walking_atlas"]["cells"][direction]
-    )
+    ) and all(
+        item["bbox"][0] == 40
+        and item["bbox"][1] == WALK_HEAD_TOP
+        and item["bbox"][2] == 152
+        and item["bbox"][3] == 180
+        for direction in ("down", "up")
+        for item in validation["vertical_walking_atlas"]["cells"][direction]
+    ) and idle_bbox is not None and idle_bbox[2] - idle_bbox[0] == WALK_TARGET_WIDTH
     (QA / "assets-validation.json").write_text(json.dumps(validation, indent=2) + "\n")
     if not validation["ok"]:
-        raise SystemExit("direction asset validation failed")
+        raise SystemExit("asset validation failed")
 
 
 if __name__ == "__main__":
