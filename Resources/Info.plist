@@ -30,6 +30,10 @@
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Isaac Pet 只读取你主动选择的提醒事项列表，并导入到本地 Todo；不会修改或删除系统提醒事项。</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Isaac Pet 只读取你主动选择的提醒事项列表，并导入到本地 Todo；不会修改或删除系统提醒事项。</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Unofficial fan project; Isaac artwork remains property of its rights holders.</string>
 </dict>

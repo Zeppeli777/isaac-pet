@@ -265,6 +265,227 @@ public struct PetSettings: Equatable, Sendable {
     }
 }
 
+public enum SpeechBubblePolicy {
+    public static let maximumCharacters = 80
+
+    public static func normalized(_ rawValue: String) -> String? {
+        let collapsed = rawValue
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+        guard !collapsed.isEmpty else { return nil }
+        guard collapsed.count > maximumCharacters else { return collapsed }
+        return String(collapsed.prefix(maximumCharacters - 1)) + "…"
+    }
+
+    public static func displayDuration(for message: String) -> TimeInterval {
+        min(max(3 + Double(message.count) * 0.055, 3), 8)
+    }
+}
+
+public struct TodoItem: Codable, Equatable, Identifiable, Sendable {
+    public let id: UUID
+    public var title: String
+    public let createdAt: Date
+    public var dueAt: Date?
+    public var completedAt: Date?
+    public var remindedAt: Date?
+    public var externalSource: TodoExternalSource?
+
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        createdAt: Date = Date(),
+        dueAt: Date? = nil,
+        completedAt: Date? = nil,
+        remindedAt: Date? = nil,
+        externalSource: TodoExternalSource? = nil
+    ) {
+        self.id = id
+        self.title = TodoPolicy.normalizedTitle(title) ?? ""
+        self.createdAt = createdAt
+        self.dueAt = dueAt
+        self.completedAt = completedAt
+        self.remindedAt = remindedAt
+        self.externalSource = externalSource
+    }
+
+    public var isCompleted: Bool { completedAt != nil }
+}
+
+public struct TodoExternalSource: Codable, Equatable, Sendable {
+    public enum Kind: String, Codable, Sendable {
+        case appleReminders
+        case notion
+    }
+
+    public let kind: Kind
+    public let itemIdentifier: String
+    public var containerIdentifier: String?
+    public var containerTitle: String?
+    public var lastSyncedAt: Date
+
+    public init(
+        kind: Kind,
+        itemIdentifier: String,
+        containerIdentifier: String? = nil,
+        containerTitle: String? = nil,
+        lastSyncedAt: Date = Date()
+    ) {
+        self.kind = kind
+        self.itemIdentifier = itemIdentifier
+        self.containerIdentifier = containerIdentifier
+        self.containerTitle = containerTitle
+        self.lastSyncedAt = lastSyncedAt
+    }
+}
+
+public struct ExternalTodoRecord: Equatable, Sendable {
+    public let source: TodoExternalSource
+    public let title: String
+    public let dueAt: Date?
+    public let completedAt: Date?
+
+    public init(
+        source: TodoExternalSource,
+        title: String,
+        dueAt: Date?,
+        completedAt: Date?
+    ) {
+        self.source = source
+        self.title = title
+        self.dueAt = dueAt
+        self.completedAt = completedAt
+    }
+}
+
+public struct TodoImportSummary: Equatable, Sendable {
+    public let inserted: Int
+    public let updated: Int
+    public let skipped: Int
+
+    public init(inserted: Int, updated: Int, skipped: Int) {
+        self.inserted = inserted
+        self.updated = updated
+        self.skipped = skipped
+    }
+}
+
+public enum TodoPolicy {
+    public static let maximumTitleCharacters = 120
+
+    public static func normalizedTitle(_ rawValue: String) -> String? {
+        let collapsed = rawValue
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+        guard !collapsed.isEmpty else { return nil }
+        guard collapsed.count > maximumTitleCharacters else { return collapsed }
+        return String(collapsed.prefix(maximumTitleCharacters - 1)) + "…"
+    }
+
+    public static func sorted(_ items: [TodoItem]) -> [TodoItem] {
+        items.sorted { lhs, rhs in
+            if lhs.isCompleted != rhs.isCompleted { return !lhs.isCompleted }
+            switch (lhs.dueAt, rhs.dueAt) {
+            case let (left?, right?) where left != right:
+                return left < right
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            default:
+                return lhs.createdAt < rhs.createdAt
+            }
+        }
+    }
+
+    public static func pending(_ items: [TodoItem]) -> [TodoItem] {
+        sorted(items.filter { !$0.isCompleted })
+    }
+
+    public static func nextPending(in items: [TodoItem]) -> TodoItem? {
+        pending(items).first
+    }
+
+    public static func dueForDelivery(in items: [TodoItem], at date: Date) -> [TodoItem] {
+        sorted(items.filter { item in
+            !item.isCompleted
+                && item.remindedAt == nil
+                && item.dueAt.map { $0 <= date } == true
+        })
+    }
+
+    public static func merging(
+        _ records: [ExternalTodoRecord],
+        into items: [TodoItem],
+        now: Date = Date()
+    ) -> (items: [TodoItem], summary: TodoImportSummary) {
+        var mergedItems = items
+        var inserted = 0
+        var updated = 0
+        var skipped = 0
+
+        for record in records {
+            guard let title = normalizedTitle(record.title), !record.source.itemIdentifier.isEmpty else {
+                skipped += 1
+                continue
+            }
+            if let index = mergedItems.firstIndex(where: {
+                $0.externalSource?.kind == record.source.kind
+                    && $0.externalSource?.itemIdentifier == record.source.itemIdentifier
+            }) {
+                var item = mergedItems[index]
+                let oldDueAt = item.dueAt
+                let wasCompleted = item.isCompleted
+                item.title = title
+                item.dueAt = record.dueAt
+                item.completedAt = record.completedAt
+                var source = record.source
+                source.lastSyncedAt = now
+                item.externalSource = source
+                // A reopened source task must be eligible for a new delivery even when
+                // its deadline did not change. The same rule applies when its deadline
+                // moves, so the pending notification can be scheduled for the new time.
+                if record.completedAt == nil, wasCompleted || oldDueAt != record.dueAt {
+                    item.remindedAt = nil
+                }
+                mergedItems[index] = item
+                updated += 1
+            } else {
+                var source = record.source
+                source.lastSyncedAt = now
+                mergedItems.append(TodoItem(
+                    title: title,
+                    createdAt: now,
+                    dueAt: record.dueAt,
+                    completedAt: record.completedAt,
+                    externalSource: source
+                ))
+                inserted += 1
+            }
+        }
+
+        return (
+            sorted(mergedItems),
+            TodoImportSummary(inserted: inserted, updated: updated, skipped: skipped)
+        )
+    }
+}
+
+public enum TodoFileCodec {
+    public static func encode(_ items: [TodoItem]) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(TodoPolicy.sorted(items))
+    }
+
+    public static func decode(_ data: Data) throws -> [TodoItem] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return TodoPolicy.sorted(try decoder.decode([TodoItem].self, from: data))
+    }
+}
+
 public struct ScreenBounds: Equatable, Sendable {
     public let rect: CGRect
 

@@ -29,7 +29,7 @@ final class SpriteFrame {
 @MainActor
 final class SpriteAtlas {
     enum AtlasError: LocalizedError {
-        case missingResource
+        case missingResource(String)
         case invalidImage
         case missingTearResource
         case invalidTearImage
@@ -46,7 +46,7 @@ final class SpriteAtlas {
 
         var errorDescription: String? {
             switch self {
-            case .missingResource: "找不到 spritesheet.webp。"
+            case let .missingResource(name): "找不到 \(name).webp。"
             case .invalidImage: "无法解码 Isaac 动画图集。"
             case .missingTearResource: "找不到 IsaacTear.png。"
             case .invalidTearImage: "无法解码 Isaac 泪弹素材。"
@@ -78,9 +78,17 @@ final class SpriteAtlas {
     private var verticalWalkingCache: [Cell: SpriteFrame] = [:]
     private var cachedTear: SpriteFrame?
 
-    init(bundle: Bundle = .main) throws {
-        guard let url = bundle.url(forResource: "spritesheet", withExtension: "webp") else {
-            throw AtlasError.missingResource
+    init(
+        bundle: Bundle = .main,
+        spriteSheetResource: String = "spritesheet",
+        spriteSheetSubdirectory: String? = nil
+    ) throws {
+        guard let url = bundle.url(
+            forResource: spriteSheetResource,
+            withExtension: "webp",
+            subdirectory: spriteSheetSubdirectory
+        ) else {
+            throw AtlasError.missingResource(spriteSheetResource)
         }
         guard let image = NSImage(contentsOf: url),
               let source = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {

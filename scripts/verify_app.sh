@@ -12,6 +12,8 @@ APP="${1:-$ROOT/dist/Isaac Pet.app}"
 [ -f "$APP/Contents/Resources/IsaacTear.png" ] || { echo "Missing Isaac tear projectile" >&2; exit 1; }
 /usr/bin/plutil -extract CFBundleIdentifier raw -o - "$APP/Contents/Info.plist" | grep -Fx 'com.fanmade.isaacpet'
 /usr/bin/plutil -extract LSUIElement raw -o - "$APP/Contents/Info.plist" | grep -Fx 'true'
+/usr/bin/plutil -extract NSRemindersFullAccessUsageDescription raw -o - "$APP/Contents/Info.plist" | grep -F '不会修改或删除系统提醒事项'
+/usr/bin/plutil -extract NSRemindersUsageDescription raw -o - "$APP/Contents/Info.plist" | grep -F '不会修改或删除系统提醒事项'
 /usr/bin/codesign --verify --deep --strict "$APP"
 WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/spritesheet.webp" | awk '/pixelWidth/ {print $2}')
 HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/spritesheet.webp" | awk '/pixelHeight/ {print $2}')
@@ -25,6 +27,24 @@ VERTICAL_WALK_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/wal
 TEAR_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/IsaacTear.png" | awk '/pixelWidth/ {print $2}')
 TEAR_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/IsaacTear.png" | awk '/pixelHeight/ {print $2}')
 [ "$TEAR_WIDTH" = "19" ] && [ "$TEAR_HEIGHT" = "19" ] || { echo "Unexpected tear size: ${TEAR_WIDTH}x${TEAR_HEIGHT}" >&2; exit 1; }
+if [ -d "$APP/Contents/Resources/Agents" ]; then
+  while IFS= read -r role_atlas; do
+    ROLE_WIDTH=$(/usr/bin/sips -g pixelWidth "$role_atlas" | awk '/pixelWidth/ {print $2}')
+    ROLE_HEIGHT=$(/usr/bin/sips -g pixelHeight "$role_atlas" | awk '/pixelHeight/ {print $2}')
+    [ "$ROLE_WIDTH" = "1536" ] && [ "$ROLE_HEIGHT" = "2288" ] || {
+      echo "Unexpected role atlas size for $role_atlas: ${ROLE_WIDTH}x${ROLE_HEIGHT}" >&2
+      exit 1
+    }
+  done < <(find "$APP/Contents/Resources/Agents" -type f -name '*-spritesheet.webp' -print)
+fi
+if [ -f "$APP/Contents/Resources/Agents/magdalene-portrait.png" ]; then
+  PORTRAIT_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/Agents/magdalene-portrait.png" | awk '/pixelWidth/ {print $2}')
+  PORTRAIT_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/Agents/magdalene-portrait.png" | awk '/pixelHeight/ {print $2}')
+  [ "$PORTRAIT_WIDTH" = "192" ] && [ "$PORTRAIT_HEIGHT" = "192" ] || {
+    echo "Unexpected Magdalene portrait size: ${PORTRAIT_WIDTH}x${PORTRAIT_HEIGHT}" >&2
+    exit 1
+  }
+fi
 echo "atlas: ${WIDTH}x${HEIGHT} RGBA"
 echo "shooting atlas: ${SHOOT_WIDTH}x${SHOOT_HEIGHT} Isaac source frames"
 echo "vertical walking atlas: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT} Isaac source frames"

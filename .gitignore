@@ -1,8 +1,44 @@
+# macOS / Finder
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+Icon
 Thumbs.db
+
+# Swift Package Manager / Xcode
 .build/
 .swiftpm/
+Package.resolved
 DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+
+# Build and local runtime output
+dist/
+tmp/
+logs/
+*.log
+coverage/
+
+# IDEs and local tooling
+.idea/
+.vscode/
 .vs/
 cmake-build-*/
-dist/
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+*.p12
+*.cer
+*.key
+*.pem
+
+# Python caches used by deterministic asset QA scripts
+__pycache__/
+*.py[cod]
+.pytest_cache/
