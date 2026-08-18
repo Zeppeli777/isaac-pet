@@ -14,6 +14,7 @@
 - 可从菜单栏或右键菜单进入游玩模式，使用 WASD 移动、方向键发射泪弹
 - 菜单可触发哭泣、点赞和观察动画，调整大小或暂停走动
 - 像素风对话气泡，可随机说话、显示颜文字或输入自定义文字
+- 今日运势塔罗牌：以撒 22 张大阿卡纳为牌组，当前使用纯色像素占位卡面
 - 可选 OpenAI Responses API 对话：默认关闭，API Key 只存 macOS 钥匙串
 - 内置本地 Todo 窗口，可新增、完成、恢复和删除任务，并设置定时提醒
 - 到期任务会通过 Isaac 气泡提醒；授权后也会发送 macOS 系统通知
@@ -68,6 +69,7 @@ scripts/install_app.sh
 - 拖拽 Isaac：移动到另一个位置或屏幕，松手后停在该屏幕底部
 - 右键 Isaac：打开动作与设置菜单
 - 对话气泡：从右键或菜单栏菜单选择随机文字、颜文字或“自定义气泡…”
+- 今日运势：从菜单选择“今日运势（塔罗）…”，每天固定一张，可在窗口内娱乐重抽
 - LLM：先从“LLM 设置…”保存 API Key 和模型，再用“问 Isaac（LLM）…”主动发送单条问题
 - Todo：从菜单进入“新建 Todo…”、“查看 Todo…”或“查看今日计划…”。今日计划只读本机 Todo，按逾期、今天到期、后续到期、无日期的顺序给出最多三项重点，也可以让 Isaac 显示下一项
 - Apple 提醒事项：从 Todo 子菜单选择“从 Apple 提醒事项同步…”，授权后选择一个列表或全部列表
@@ -168,7 +170,7 @@ MAG_PYTHON="/Users/zeppeli/.cache/codex-runtimes/codex-primary-runtime/dependenc
 
 原始角色图和 Golden Locks 条保存在 `Assets/Source/agents/`，不会被打进应用包。`magdalene-portrait.png` 仍供 Agent 中心使用。用户从菜单选择的外观会持久保存；Agent 的角色外观只是运行期间的临时覆盖，不会修改这项偏好。射击、泪弹和竖向行走辅助资源目前仍沿用 Isaac 的基础辅助图集，这是现有 `SpriteAtlas` 架构的范围。
 
-需要从终端或自动化工具直接打开界面时，可传入 `--show-todos`、`--show-daily-plan`、`--show-notion-settings`、`--show-llm-settings` 或 `--show-agents`。测试时可用 `ISAAC_AGENT_DATA_DIR` 指向隔离的审计目录。
+需要从终端或自动化工具直接打开界面时，可传入 `--show-todos`、`--show-daily-plan`、`--show-tarot`、`--show-notion-settings`、`--show-llm-settings` 或 `--show-agents`。测试时可用 `ISAAC_AGENT_DATA_DIR` 指向隔离的审计目录。
 
 ## 验证
 

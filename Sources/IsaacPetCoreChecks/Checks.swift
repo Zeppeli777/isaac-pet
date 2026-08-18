@@ -113,6 +113,27 @@ enum IsaacPetCoreChecks {
         check(SpeechBubblePolicy.displayDuration(for: "hi") == 3.11, "short speech duration")
         check(SpeechBubblePolicy.displayDuration(for: longSpeech) == 8, "speech duration cap")
 
+        check(TarotDeck.majorArcana.count == 22, "major arcana has 22 cards")
+        check(Set(TarotDeck.majorArcana.map(\.id)).count == 22, "major arcana IDs are unique")
+        check(TarotDeck.majorArcana.first?.name.contains("愚者") == true, "major arcana starts with The Fool")
+        check(TarotDeck.majorArcana.last?.name.contains("世界") == true, "major arcana ends with The World")
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let tarotDayOne = Date(timeIntervalSince1970: 1_704_067_200) // 2024-01-01 UTC
+        let tarotDayTwo = tarotDayOne.addingTimeInterval(86_400)
+        check(
+            TarotDrawPolicy.dailyCard(for: tarotDayOne, calendar: utcCalendar).id == 0,
+            "daily tarot starts at a stable reference card"
+        )
+        check(
+            TarotDrawPolicy.dailyCard(for: tarotDayTwo, calendar: utcCalendar).id == 1,
+            "daily tarot advances by calendar day"
+        )
+        check(
+            TarotDrawPolicy.randomCard(excluding: 0).id != 0,
+            "random tarot can exclude the previous card"
+        )
+
         let todoNow = Date(timeIntervalSince1970: 1_000)
         let earlyTodo = TodoItem(
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,

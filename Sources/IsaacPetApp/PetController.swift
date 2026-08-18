@@ -53,6 +53,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private var keyEventMonitor: Any?
     private var todoWindowController: TodoWindowController?
     private var dailyPlanWindowController: DailyPlanWindowController?
+    private var tarotWindowController: TarotWindowController?
     private var agentWindowController: AgentWindowController?
     private var activeAgentTask: Task<Void, Never>?
     private var activeAgentTaskID: UUID?
@@ -128,6 +129,10 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                 self?.showDailyPlan()
             }
+        } else if CommandLine.arguments.contains("--show-tarot") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                self?.showTarot()
+            }
         } else if CommandLine.arguments.contains("--show-notion-settings") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                 self?.configureNotion()
@@ -167,6 +172,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         menu.addItem(item("随机说一句", action: #selector(sayRandomPhrase), tag: 115))
         menu.addItem(item("表个情", action: #selector(showRandomExpression), tag: 116))
         menu.addItem(item("自定义气泡…", action: #selector(composeSpeech), tag: 117))
+        menu.addItem(item("今日运势（塔罗）…", action: #selector(showTarot), tag: 130))
         menu.addItem(item("问 Isaac（LLM）…", action: #selector(askLLM), tag: 118))
         menu.addItem(item("LLM 设置…", action: #selector(configureLLM), tag: 119))
         menu.addItem(item("断开 LLM", action: #selector(disconnectLLM), tag: 120))
@@ -270,6 +276,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         }
         for tag in 110...114 { menu.item(withTag: tag)?.isEnabled = !isPlayMode }
         for tag in 115...117 { menu.item(withTag: tag)?.isEnabled = !isPlayMode }
+        menu.item(withTag: 130)?.isEnabled = !isPlayMode
         for tag in 118...119 { menu.item(withTag: tag)?.isEnabled = !isPlayMode && llmTask == nil }
         // Never query Keychain while an NSMenu is tracking input. That can surface a
         // system authorization dialog behind the menu and leave its password field
@@ -341,6 +348,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         activeAgentTask?.cancel()
         todoWindowController?.close()
         dailyPlanWindowController?.close()
+        tarotWindowController?.close()
         agentWindowController?.close()
         speechBubble.stop()
     }
@@ -731,6 +739,13 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         return controller
     }
 
+    private func tarotWindow() -> TarotWindowController {
+        if let tarotWindowController { return tarotWindowController }
+        let controller = TarotWindowController()
+        tarotWindowController = controller
+        return controller
+    }
+
     private func screen(containing point: NSPoint) -> NSScreen? {
         NSScreen.screens.first { $0.frame.contains(point) }
     }
@@ -1093,6 +1108,13 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         guard !isPlayMode else { return }
         targetX = nil
         dailyPlanWindow().present()
+    }
+
+    @objc private func showTarot() {
+        guard !isPlayMode else { return }
+        targetX = nil
+        perform(.observe)
+        tarotWindow().present()
     }
 
     @objc private func showNextTodo() {
