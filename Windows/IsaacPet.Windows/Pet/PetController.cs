@@ -58,7 +58,6 @@ public sealed class PetController
     private double _shootingPoseEndsAt;
     private readonly List<Projectile> _projectiles = [];
     private double _nextTodoCheckAt;
-    private bool _didExplainNotificationDenial;
 
     private sealed record Projectile(TearWindow Window, double VelocityX, double VelocityY, double ExpiresAt);
 
