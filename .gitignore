@@ -42,3 +42,10 @@ cmake-build-*/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Windows 移植本地工具链（勿提交）
+.dotnet-sdk/
+
+# Windows (WPF) build output
+**/bin/
+**/obj/

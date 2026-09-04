@@ -27,7 +27,7 @@
 ## 平台状态
 
 - macOS 13+：已实现，使用 Swift 6 和 AppKit
-- Windows：规划中，当前仓库尚不提供 Windows 可执行文件
+- Windows 10/11：初步移植（.NET 8 + WPF），见 [Windows/README.md](Windows/README.md)。核心桌宠、游玩模式、Todo、LLM 对话已可用；Notion 同步与 Agent 中心尚未移植
 
 ## 系统要求
 
@@ -186,7 +186,7 @@ scripts/verify_app.sh
 - `Resources`：应用图集、图标和 Info.plist
 - `scripts`：素材生成、构建、安装和验证脚本
 
-未来增加 Windows 版本时，应保留现有 macOS 应用和共享素材，在独立的平台目录中添加 Windows UI、窗口管理及安装打包实现。
+未来增加 Windows 版本时，应保留现有 macOS 应用和共享素材，在独立的平台目录中添加 Windows UI、窗口管理及安装打包实现。（已落地：`Windows/` 目录即 Windows 移植。）
 
 ## 声明
 
