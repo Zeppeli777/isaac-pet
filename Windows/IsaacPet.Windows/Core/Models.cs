@@ -210,7 +210,7 @@ public sealed class TodoStore
         {
             return TodoFileCodec.Decode(File.ReadAllText(_filePath));
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             return [];
         }

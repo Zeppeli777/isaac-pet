@@ -74,7 +74,7 @@ public sealed class SettingsStore
         {
             return JsonSerializer.Deserialize<Persisted>(File.ReadAllText(_filePath)) ?? new Persisted();
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             return new Persisted();
         }

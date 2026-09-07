@@ -138,7 +138,7 @@ public sealed class TrayIconHost : IDisposable
             try { _notifyIcon.ShowBalloonTip(3000, "Isaac Pet", text, ToolTipIcon.Info); }
             catch { /* 通知区域不可用时忽略，桌面气泡仍然有效 */ }
         };
-        controller.TodosChanged += () => { };
+        controller.TodosChanged += UpdateStates;
 
         // LLM 状态回调
         _llmRequestRunning = llmRequestRunning;

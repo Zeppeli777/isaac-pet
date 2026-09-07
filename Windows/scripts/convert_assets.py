@@ -13,6 +13,7 @@ Reads from the repository root:
     Resources/IsaacPet.png
     Resources/StatusIsaac.png
     Resources/Agents/magdalene-spritesheet.webp
+    Resources/Agents/judas-spritesheet.webp
 
 Writes into Windows/IsaacPet.Windows/Assets/.
 """
@@ -40,6 +41,7 @@ WEBP_ATLASES = {
 OPTIONAL_ATLASES = {
     # 多角色图集：存在才转换，缺失时 Windows 端与 macOS 端一样回退为 Isaac。
     "Agents/magdalene-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
+    "Agents/judas-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
 }
 
 PLAIN_COPIES = ["IsaacTear.png", "IsaacPet.png", "StatusIsaac.png"]
