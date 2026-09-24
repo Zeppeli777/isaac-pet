@@ -75,7 +75,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             if PetAppearanceCatalog.availability(activeAppearance).isAvailable {
                 self.atlas = try SpriteAtlas(
                     spriteSheetResource: definition.spriteSheetResource,
-                    spriteSheetSubdirectory: definition.subdirectory
+                    spriteSheetSubdirectory: definition.subdirectory,
+                    shootingAtlasResource: definition.shootingAtlasResource,
+                    verticalWalkingResource: definition.verticalWalkingResource
                 )
             } else {
                 activeAppearance = .isaac
@@ -866,7 +868,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         do {
             atlas = try SpriteAtlas(
                 spriteSheetResource: definition.spriteSheetResource,
-                spriteSheetSubdirectory: definition.subdirectory
+                spriteSheetSubdirectory: definition.subdirectory,
+                shootingAtlasResource: definition.shootingAtlasResource,
+                verticalWalkingResource: definition.verticalWalkingResource
             )
             activeAppearance = appearance
             if persistUserSelection {
