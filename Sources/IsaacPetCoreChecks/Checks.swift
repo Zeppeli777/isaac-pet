@@ -426,41 +426,139 @@ enum IsaacPetCoreChecks {
         check(emptyWellbeingPlan.workloadCount == 0, "empty wellbeing plan reports light workload")
 
         do {
-            let request = OpenAIResponsesRequest(
+            let openAIRequest = OpenAIChatRequest(
                 model: "gpt-test",
-                instructions: "short",
+                system: "short",
                 input: "hello",
-                maxOutputTokens: 8,
-                store: false
+                maxOutputTokens: 8
             )
-            let requestObject = try JSONSerialization.jsonObject(
-                with: OpenAIResponsesCodec.encodeRequest(request)
+            let openAIObject = try JSONSerialization.jsonObject(
+                with: OpenAIChatCodec.encodeRequest(openAIRequest)
             ) as? [String: Any]
-            check(requestObject?["model"] as? String == "gpt-test", "LLM request model encoding")
-            check(requestObject?["max_output_tokens"] as? Int == 16, "LLM output token lower bound")
-            check(requestObject?["store"] as? Bool == false, "LLM responses are not stored by request")
-
-            let responseJSON = """
-            {
-              "output": [
-                {"type":"reasoning","content":[]},
-                {"type":"message","content":[
-                  {"type":"output_text","text":"第一句"},
-                  {"type":"refusal","text":"忽略"},
-                  {"type":"output_text","text":"第二句"}
-                ]}
-              ]
+            check(openAIObject?["model"] as? String == "gpt-test", "OpenAI chat request model encoding")
+            check(openAIObject?["max_tokens"] as? Int == 16, "OpenAI chat output token lower bound")
+            check(openAIObject?["stream"] as? Bool == false, "OpenAI chat requests are not streamed")
+            if let messages = openAIObject?["messages"] as? [[String: Any]] {
+                check(messages.count == 2, "OpenAI chat request carries system and user messages")
+                check(messages.first?["role"] as? String == "system", "OpenAI chat system prompt role")
+                check(messages.last?["content"] as? String == "hello", "OpenAI chat user input content")
+            } else {
+                check(false, "OpenAI chat request messages encoding")
             }
-            """
-            let decodedLLMText = try OpenAIResponsesCodec.decodeText(from: Data(responseJSON.utf8))
-            check(decodedLLMText == "第一句\n第二句", "LLM decoder collects all output_text items")
-            let errorJSON = #"{"error":{"message":"bad key"}}"#
+
+            let openAIResponseJSON = #"{"choices":[{"message":{"role":"assistant","content":"你好呀"}}]}"#
+            let openAIText = try OpenAIChatCodec.decodeText(from: Data(openAIResponseJSON.utf8))
+            check(openAIText == "你好呀", "OpenAI chat decoder extracts assistant message")
+            let openAIErrorJSON = #"{"error":{"message":"bad key"}}"#
             check(
-                OpenAIResponsesCodec.decodeAPIError(from: Data(errorJSON.utf8), statusCode: 401) == "bad key",
-                "LLM API error decoding"
+                OpenAIChatCodec.decodeAPIError(from: Data(openAIErrorJSON.utf8), statusCode: 401) == "bad key",
+                "OpenAI chat API error decoding"
+            )
+            let emptyChoicesJSON = #"{"choices":[]}"#
+            check(
+                (try? OpenAIChatCodec.decodeText(from: Data(emptyChoicesJSON.utf8))) == nil,
+                "OpenAI chat decoder rejects missing message"
+            )
+
+            let anthropicRequest = AnthropicMessagesRequest(
+                model: "claude-test",
+                system: "short",
+                input: "hello",
+                maxOutputTokens: 8
+            )
+            let anthropicObject = try JSONSerialization.jsonObject(
+                with: AnthropicMessagesCodec.encodeRequest(anthropicRequest)
+            ) as? [String: Any]
+            check(anthropicObject?["model"] as? String == "claude-test", "Anthropic request model encoding")
+            check(anthropicObject?["system"] as? String == "short", "Anthropic request keeps system prompt top level")
+            check(anthropicObject?["max_tokens"] as? Int == 16, "Anthropic output token lower bound")
+            if let messages = anthropicObject?["messages"] as? [[String: Any]] {
+                check(messages.count == 1, "Anthropic request carries a single user message")
+                check(messages.first?["role"] as? String == "user", "Anthropic user message role")
+            } else {
+                check(false, "Anthropic request messages encoding")
+            }
+
+            let anthropicResponseJSON = """
+            {"content":[
+              {"type":"text","text":"第一句"},
+              {"type":"tool_use","id":"t"},
+              {"type":"text","text":"第二句"}
+            ]}
+            """
+            let anthropicText = try AnthropicMessagesCodec.decodeText(from: Data(anthropicResponseJSON.utf8))
+            check(anthropicText == "第一句\n第二句", "Anthropic decoder collects all text blocks")
+            let anthropicErrorJSON = #"{"type":"error","error":{"message":"overloaded"}}"#
+            check(
+                AnthropicMessagesCodec.decodeAPIError(from: Data(anthropicErrorJSON.utf8), statusCode: 529) == "overloaded",
+                "Anthropic API error decoding"
             )
         } catch {
-            failures.append("LLM request and response codec: \(error)")
+            failures.append("LLM request and response codecs: \(error)")
+        }
+
+        do {
+            let openAIConfig = LLMConnectionConfig(
+                baseURL: "https://api.openai.com/v1/",
+                apiKey: "sk-test",
+                model: "gpt-test",
+                apiFormat: .openai
+            )
+            check(
+                openAIConfig.endpointURL()?.absoluteString == "https://api.openai.com/v1/chat/completions",
+                "OpenAI format appends chat completions path"
+            )
+            let anthropicConfig = LLMConnectionConfig(
+                baseURL: "https://api.anthropic.com",
+                apiKey: "sk-ant-test",
+                model: "claude-test",
+                apiFormat: .anthropic
+            )
+            check(
+                anthropicConfig.endpointURL()?.absoluteString == "https://api.anthropic.com/v1/messages",
+                "Anthropic format fills in v1 and messages path"
+            )
+            let insecureConfig = LLMConnectionConfig(
+                baseURL: "ftp://example.com",
+                apiKey: "",
+                model: "m",
+                apiFormat: .openai
+            )
+            check(insecureConfig.endpointURL() == nil, "endpoint builder rejects non-http schemes")
+            try anthropicConfig.validate()
+            check(
+                (try? insecureConfig.validate()) == nil,
+                "validation rejects invalid base URL"
+            )
+
+            let imported = try LLMConnectionConfig.parseImported(Data(#"""
+            {"baseUrl": "https://api.anthropic.com", "api_key": "sk-ant-test", "model_name": "claude-test"}
+            """#.utf8))
+            check(imported.apiFormat == .anthropic, "import infers Anthropic format from base URL")
+            check(imported.apiKey == "sk-ant-test", "import accepts api_key alias")
+            check(imported.model == "claude-test", "import accepts model_name alias")
+            let canonical = try LLMConnectionConfig.parseImported(Data(#"""
+            {"baseURL": "https://api.openai.com/v1", "apiKey": "sk-test", "model": "gpt-test", "apiFormat": "openai"}
+            """#.utf8))
+            check(canonical == openAIConfig, "import round-trips canonical config fields")
+
+            let temporaryConfig = FileManager.default.temporaryDirectory
+                .appendingPathComponent("IsaacLLMConfigChecks-\(UUID().uuidString)", isDirectory: true)
+                .appendingPathComponent("llm-config.json")
+            defer { try? FileManager.default.removeItem(at: temporaryConfig) }
+            let configStore = LLMConfigFileStore(fileURL: temporaryConfig)
+            let missingConfig = try configStore.load()
+            check(missingConfig == nil, "missing config file reads as not configured")
+            try configStore.save(openAIConfig)
+            let reloaded = try configStore.load()
+            check(reloaded == openAIConfig, "config file store round-trips settings")
+            let permissions = try FileManager.default.attributesOfItem(atPath: temporaryConfig.path)[.posixPermissions] as? Int
+            check(permissions == 0o600, "config file is written with owner-only permissions")
+            try configStore.delete()
+            let deletedConfig = try configStore.load()
+            check(deletedConfig == nil, "delete removes the config file")
+        } catch {
+            failures.append("LLM connection config: \(error)")
         }
 
         do {
