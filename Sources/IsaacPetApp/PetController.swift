@@ -945,12 +945,14 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         guard !isPlayMode, llmTask == nil else { return }
         targetX = nil
         NSApp.activate(ignoringOtherApps: true)
-        let existingConfig: LLMConnectionConfig?
+        var existingConfig: LLMConnectionConfig?
         do {
             existingConfig = try llmConfigStore.load()
         } catch {
-            presentLLMMessage(title: "无法读取 LLM 设置", message: error.localizedDescription)
-            return
+            presentLLMMessage(
+                title: "无法读取 LLM 设置",
+                message: "配置文件无法解析（\(error.localizedDescription)）。可以直接重新填写并保存，旧文件会被覆盖。"
+            )
         }
 
         let accessory = LLMSettingsAccessoryView(existingConfig: existingConfig)
@@ -995,8 +997,12 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     @objc private func disconnectLLM() {
         guard llmTask == nil else { return }
         NSApp.activate(ignoringOtherApps: true)
-        llmConfigStore.delete()
-        showSpeech("LLM 已断开，本地功能不受影响。")
+        do {
+            try llmConfigStore.delete()
+            showSpeech("LLM 已断开，本地功能不受影响。")
+        } catch {
+            presentLLMMessage(title: "无法断开 LLM", message: error.localizedDescription)
+        }
     }
 
     @objc private func askLLM() {

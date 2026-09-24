@@ -554,9 +554,18 @@ enum IsaacPetCoreChecks {
             check(reloaded == openAIConfig, "config file store round-trips settings")
             let permissions = try FileManager.default.attributesOfItem(atPath: temporaryConfig.path)[.posixPermissions] as? Int
             check(permissions == 0o600, "config file is written with owner-only permissions")
+            try configStore.save(anthropicConfig)
+            let overwritten = try configStore.load()
+            check(overwritten == anthropicConfig, "saving over an existing config updates it")
+            try Data("not json".utf8).write(to: temporaryConfig)
+            let corruptConfig = try? configStore.load()
+            check(corruptConfig == nil, "corrupt config file fails to load")
             try configStore.delete()
             let deletedConfig = try configStore.load()
             check(deletedConfig == nil, "delete removes the config file")
+            try configStore.delete()
+            let deletedAgain = try configStore.load()
+            check(deletedAgain == nil, "deleting a missing config file succeeds")
         } catch {
             failures.append("LLM connection config: \(error)")
         }
