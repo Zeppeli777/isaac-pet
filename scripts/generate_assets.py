@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from math import hypot, sqrt
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageOps
@@ -20,6 +21,12 @@ VERTICAL_WALK_COLUMNS = 4
 VERTICAL_WALK_ROWS = 2
 WALK_TARGET_WIDTH = 112
 WALK_HEAD_TOP = 46
+TEAR_SIZE = 19
+# Sampled from the Isaac tear reference: black rim, then three steps of lit blue.
+TEAR_OUTLINE = (7, 0, 0, 255)
+TEAR_SHADE = (120, 162, 248, 255)
+TEAR_BODY = (169, 197, 252, 255)
+TEAR_HIGHLIGHT = (231, 242, 254, 255)
 
 
 def nearest(image: Image.Image, scale: int) -> Image.Image:
@@ -127,24 +134,74 @@ def make_icons(base: Image.Image) -> None:
     subprocess.run(["/usr/bin/iconutil", "-c", "icns", str(iconset), "-o", str(icns)], check=True)
 
 
-def make_tear_sprite(atlas: Image.Image) -> None:
-    # Crop the detached tear from the supplied crying animation itself. This keeps the
-    # projectile pixel-for-pixel Isaac artwork rather than inventing a new shape or palette.
-    cell = atlas.crop((0, 5 * CELL_H, CELL_W, 6 * CELL_H))
-    pixel = cell.load()
-    cyan = Image.new("RGBA", cell.size, (0, 0, 0, 0))
-    cyan_pixels = cyan.load()
-    for y in range(cell.height):
-        for x in range(cell.width):
-            r, g, b, a = pixel[x, y]
-            if a and b > g * 0.92 and g > r * 1.15 and g > 110:
-                cyan_pixels[x, y] = (r, g, b, a)
-    box = cyan.getbbox()
-    if not box:
-        raise SystemExit("Isaac crying animation has no tear pixels")
-    # The lower cyan component is the detached tear; crop it with its exact source pixels.
-    tear = cyan.crop((box[0], 158, box[2], 177))
-    tear.save(RESOURCES / "IsaacTear.png")
+def make_tear_sprite() -> None:
+    # Isaac's tears are round orbs: a dark rim around a blue ball with a bright highlight,
+    # so the projectile is shaded here instead of cropping the detached crying-face blob.
+    canvas = Image.new("RGBA", (TEAR_SIZE, TEAR_SIZE), (0, 0, 0, 0))
+    pixels = canvas.load()
+    center = (TEAR_SIZE - 1) / 2
+    radius = TEAR_SIZE / 2
+    rim = 0.24
+    highlight_center = (center - 1.8, center - 1.6)
+    highlight_radius = 2.4
+    light = (-0.30, 0.42, 0.86)  # the light source sits above and to the left of the tear
+    for y in range(TEAR_SIZE):
+        for x in range(TEAR_SIZE):
+            nx = (x - center) / (radius - 0.15)
+            ny = (y - center) / (radius - 0.15)
+            distance = hypot(nx, ny)
+            if distance > 1:
+                continue
+            if distance > 1 - rim:
+                pixels[x, y] = TEAR_OUTLINE
+                continue
+            diffuse = max(0.0, nx * light[0] - ny * light[1] + sqrt(1 - distance * distance) * light[2])
+            if hypot(x - highlight_center[0], y - highlight_center[1]) <= highlight_radius:
+                pixels[x, y] = TEAR_HIGHLIGHT
+            elif diffuse > 0.95:
+                pixels[x, y] = TEAR_HIGHLIGHT
+            elif diffuse > 0.62:
+                pixels[x, y] = TEAR_BODY
+            else:
+                pixels[x, y] = TEAR_SHADE
+    canvas.save(RESOURCES / "IsaacTear.png")
+
+    # Keep the round shape reviewable next to the other atlases.
+    magnified = nearest(canvas, 8)
+    contact = Image.new(
+        "RGBA",
+        (magnified.width + 60, magnified.height + 28),
+        (35, 35, 42, 255),
+    )
+    contact.alpha_composite(canvas, (20, 28))
+    contact.alpha_composite(magnified, (39, 0))
+    draw = ImageDraw.Draw(contact)
+    draw.text((20, 6), "1x", fill=(255, 255, 255, 255))
+    draw.text((39, 6), "8x", fill=(255, 255, 255, 255))
+    contact.save(QA / "tear-contact-sheet.png")
+
+
+def tear_validation(tear: Image.Image) -> dict[str, object]:
+    palette = {TEAR_OUTLINE, TEAR_SHADE, TEAR_BODY, TEAR_HIGHLIGHT}
+    alpha = tear.getchannel("A")
+    pixels = alpha.load()
+    center = (TEAR_SIZE - 1) / 2
+    radius = TEAR_SIZE / 2
+    inside_circle = all(
+        hypot(x - center, y - center) <= radius
+        for y in range(TEAR_SIZE)
+        for x in range(TEAR_SIZE)
+        if pixels[x, y]
+    )
+    colors = {color for color in tear.getdata() if color[3]}
+    return {
+        "path": "Resources/IsaacTear.png",
+        "size": [TEAR_SIZE, TEAR_SIZE],
+        "components": connected_components(tear),
+        "round": inside_circle,
+        "palette": sorted(color[:3] for color in colors) == sorted(color[:3] for color in palette),
+        "contact_sheet": "qa/tear-contact-sheet.png",
+    }
 
 
 def make_shooting_atlas(source_sheet: Image.Image, body: Image.Image) -> list[Image.Image]:
@@ -274,7 +331,7 @@ def main() -> None:
 
     atlas.save(RESOURCES / "spritesheet.webp", lossless=True, quality=100)
     make_icons(base)
-    make_tear_sprite(atlas)
+    make_tear_sprite()
     shooting_cells = make_shooting_atlas(source_sheet, body)
     vertical_walking_cells = make_vertical_walking_atlas(source_sheet)
 
@@ -318,6 +375,7 @@ def main() -> None:
         for row, direction in ((1, "right"), (2, "left"))
     }
     make_scale_contact_sheet(atlas, final_vertical_walking_atlas)
+    final_tear = Image.open(RESOURCES / "IsaacTear.png").convert("RGBA")
     idle_bbox = atlas.crop((0, 0, CELL_W, CELL_H)).getbbox()
     validation = {
         "ok": True,
@@ -391,6 +449,7 @@ def main() -> None:
                 for direction in ("down", "up")
             },
         },
+        "tear": tear_validation(final_tear),
     }
     validation["ok"] = atlas.size == ATLAS_SIZE and all(
         item["components"] == 1 and item["matches_composed_cell"]
@@ -422,6 +481,14 @@ def main() -> None:
         for direction in ("down", "up")
         for item in validation["vertical_walking_atlas"]["cells"][direction]
     ) and idle_bbox is not None and idle_bbox[2] - idle_bbox[0] == WALK_TARGET_WIDTH
+    tear = validation["tear"]
+    validation["ok"] = (
+        validation["ok"]
+        and tear["size"] == [TEAR_SIZE, TEAR_SIZE]
+        and tear["components"] == 1
+        and tear["round"]
+        and tear["palette"]
+    )
     (QA / "assets-validation.json").write_text(json.dumps(validation, indent=2) + "\n")
     if not validation["ok"]:
         raise SystemExit("asset validation failed")
