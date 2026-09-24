@@ -84,21 +84,35 @@ def blurred_score(target: Image.Image, candidate: Image.Image, x: int, y: int) -
     return 1.0 - mean / 255.0
 
 
-def find_head_anchor(target: Image.Image, isaac_source: Image.Image) -> dict[str, object]:
+def find_head_anchor(
+    target: Image.Image,
+    isaac_source: Image.Image,
+    sources: tuple[int, ...] = HEAD_COLUMNS,
+    scales: tuple[float, ...] = HEAD_SCALES,
+) -> dict[str, object]:
     """Locate the closest supplied Isaac head in one final atlas cell.
 
     Sprites were historically assembled from 3×, 3.5× and 4× source pixels, and the
     leftward poses mirror their head.  Every combination is scored on blurred blocks to
     survive resampled art, and the visible head top is read from the cell's own
-    silhouette, so only a small vertical window around it has to be searched.
+    silhouette, so only a small vertical window around it has to be searched.  Restricting
+    `sources`/`scales` re-anchors one already chosen head, which is what a snapped cell
+    needs so its hair registration follows the head it ends up wearing.
     """
     sprite = target.getbbox()
     sprite_top = sprite[1] if sprite else 0
-    best: dict[str, object] = {"blurred": -1.0, "source_x": 0, "scale": 4.0, "x": 0, "y": 0}
-    for source_x in HEAD_COLUMNS:
+    best: dict[str, object] = {
+        "blurred": -1.0,
+        "source_x": sources[0],
+        "scale": scales[0],
+        "x": 0,
+        "y": 0,
+        "mirrored": False,
+    }
+    for source_x in sources:
         raw = isaac_source.crop((source_x, 0, source_x + HEAD_TILE, HEAD_TILE))
         inset = (raw.getbbox() or (0, 0, HEAD_TILE, HEAD_TILE))[1]
-        for scale in HEAD_SCALES:
+        for scale in scales:
             size = int(round(HEAD_TILE * scale))
             candidate = raw.resize((size, size), Image.Resampling.NEAREST)
             for mirrored in (False, True):
@@ -114,20 +128,27 @@ def find_head_anchor(target: Image.Image, isaac_source: Image.Image) -> dict[str
                             "scale": scale,
                             "x": x,
                             "y": y,
+                            "mirrored": mirrored,
                         }
     best["exact"] = matching_score(
         target,
-        head_candidate(isaac_source, best["source_x"], best["scale"]),
+        head_candidate(isaac_source, best["source_x"], best["scale"], best["mirrored"]),
         best["x"],
         best["y"],
     )
     return best
 
 
-def head_candidate(isaac_source: Image.Image, source_x: int, scale: float) -> Image.Image:
+def head_candidate(
+    isaac_source: Image.Image,
+    source_x: int,
+    scale: float,
+    mirrored: bool = False,
+) -> Image.Image:
     size = int(round(HEAD_TILE * scale))
     tile = isaac_source.crop((source_x, 0, source_x + HEAD_TILE, HEAD_TILE))
-    return tile.resize((size, size), Image.Resampling.NEAREST)
+    candidate = tile.resize((size, size), Image.Resampling.NEAREST)
+    return ImageOps.mirror(candidate) if mirrored else candidate
 
 
 def lock_layout(row: int, column: int, source_x: int) -> tuple[int, bool]:
@@ -198,9 +219,13 @@ def main() -> None:
     applications: list[dict[str, object]] = []
     low_confidence: list[dict[str, object]] = []
     for row, column, origin, cell, anchor in cells:
-        head_y = anchor["y"]
         snapped = anchor["blurred"] < CONFIDENT_MATCH
         source_x, scale = dominant[row] if snapped else (anchor["source_x"], anchor["scale"])
+        if snapped:
+            # The row's head replaces this cell's own match, so its vertical anchor has
+            # to be found again: the previous y belonged to another tile's inset/scale.
+            anchor = find_head_anchor(cell, isaac_source, sources=(source_x,), scales=(scale,))
+        head_y = anchor["y"]
         hair_index, mirrored = lock_layout(row, column, source_x)
         hair = hair_source.crop((hair_index * HAIR_FRAME, 0, (hair_index + 1) * HAIR_FRAME, HAIR_FRAME))
         if mirrored:

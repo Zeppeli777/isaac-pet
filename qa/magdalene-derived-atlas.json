@@ -43,7 +43,7 @@
       "row": 1,
       "column": 4,
       "head_match_score": 0.888,
-      "head_pixel_score": 0.6551,
+      "head_pixel_score": 0.6635,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -69,7 +69,7 @@
       "row": 2,
       "column": 0,
       "head_match_score": 0.8849,
-      "head_pixel_score": 0.6457,
+      "head_pixel_score": 0.6551,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -198,8 +198,8 @@
     {
       "row": 5,
       "column": 1,
-      "head_match_score": 0.791,
-      "head_pixel_score": 0.213,
+      "head_match_score": 0.7907,
+      "head_pixel_score": 0.2553,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 160,
       "source_scale": 4,
@@ -211,13 +211,13 @@
       ],
       "hair_offset": [
         -32,
-        21
+        13
       ],
       "hair_bbox": [
         20,
-        69,
+        61,
         176,
-        201
+        193
       ],
       "hair_covers_head": true
     },
@@ -302,8 +302,8 @@
     {
       "row": 5,
       "column": 5,
-      "head_match_score": 0.7932,
-      "head_pixel_score": 0.2196,
+      "head_match_score": 0.7926,
+      "head_pixel_score": 0.2605,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 160,
       "source_scale": 4,
@@ -315,13 +315,13 @@
       ],
       "hair_offset": [
         -32,
-        23
+        15
       ],
       "hair_bbox": [
         20,
-        71,
+        63,
         176,
-        203
+        195
       ],
       "hair_covers_head": true
     },
@@ -354,8 +354,8 @@
     {
       "row": 5,
       "column": 7,
-      "head_match_score": 0.7981,
-      "head_pixel_score": 0.2262,
+      "head_match_score": 0.7974,
+      "head_pixel_score": 0.2655,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 160,
       "source_scale": 4,
@@ -367,13 +367,13 @@
       ],
       "hair_offset": [
         -32,
-        23
+        15
       ],
       "hair_bbox": [
         20,
-        71,
+        63,
         176,
-        203
+        195
       ],
       "hair_covers_head": true
     },
@@ -432,8 +432,8 @@
     {
       "row": 7,
       "column": 2,
-      "head_match_score": 0.8137,
-      "head_pixel_score": 0.3614,
+      "head_match_score": 0.8087,
+      "head_pixel_score": 0.3425,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -445,21 +445,21 @@
       ],
       "hair_offset": [
         -32,
-        -27
+        -22
       ],
       "hair_bbox": [
         20,
-        21,
+        26,
         176,
-        141
+        146
       ],
       "hair_covers_head": true
     },
     {
       "row": 7,
       "column": 3,
-      "head_match_score": 0.8059,
-      "head_pixel_score": 0.3577,
+      "head_match_score": 0.8015,
+      "head_pixel_score": 0.336,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -471,21 +471,21 @@
       ],
       "hair_offset": [
         -32,
-        -28
+        -23
       ],
       "hair_bbox": [
         20,
-        20,
+        25,
         176,
-        140
+        145
       ],
       "hair_covers_head": true
     },
     {
       "row": 7,
       "column": 4,
-      "head_match_score": 0.8112,
-      "head_pixel_score": 0.354,
+      "head_match_score": 0.8037,
+      "head_pixel_score": 0.3295,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -497,13 +497,13 @@
       ],
       "hair_offset": [
         -32,
-        -27
+        -22
       ],
       "hair_bbox": [
         20,
-        21,
+        26,
         176,
-        141
+        146
       ],
       "hair_covers_head": true
     },
@@ -826,7 +826,7 @@
       "row": 1,
       "column": 4,
       "head_match_score": 0.888,
-      "head_pixel_score": 0.6551,
+      "head_pixel_score": 0.6635,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -930,7 +930,7 @@
       "row": 2,
       "column": 0,
       "head_match_score": 0.8849,
-      "head_pixel_score": 0.6457,
+      "head_pixel_score": 0.6551,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -956,7 +956,7 @@
       "row": 2,
       "column": 1,
       "head_match_score": 0.9185,
-      "head_pixel_score": 0.7481,
+      "head_pixel_score": 0.7716,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -982,7 +982,7 @@
       "row": 2,
       "column": 2,
       "head_match_score": 0.9568,
-      "head_pixel_score": 0.8835,
+      "head_pixel_score": 0.9239,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -1008,7 +1008,7 @@
       "row": 2,
       "column": 3,
       "head_match_score": 0.9375,
-      "head_pixel_score": 0.8252,
+      "head_pixel_score": 0.8477,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -1060,7 +1060,7 @@
       "row": 2,
       "column": 5,
       "head_match_score": 0.9176,
-      "head_pixel_score": 0.7608,
+      "head_pixel_score": 0.7702,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -1086,7 +1086,7 @@
       "row": 2,
       "column": 6,
       "head_match_score": 0.9536,
-      "head_pixel_score": 0.8882,
+      "head_pixel_score": 0.9239,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -1112,7 +1112,7 @@
       "row": 2,
       "column": 7,
       "head_match_score": 0.9318,
-      "head_pixel_score": 0.8158,
+      "head_pixel_score": 0.8477,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -1397,8 +1397,8 @@
     {
       "row": 5,
       "column": 1,
-      "head_match_score": 0.791,
-      "head_pixel_score": 0.213,
+      "head_match_score": 0.7907,
+      "head_pixel_score": 0.2553,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 160,
       "source_scale": 4,
@@ -1410,13 +1410,13 @@
       ],
       "hair_offset": [
         -32,
-        21
+        13
       ],
       "hair_bbox": [
         20,
-        69,
+        61,
         176,
-        201
+        193
       ],
       "hair_covers_head": true
     },
@@ -1501,8 +1501,8 @@
     {
       "row": 5,
       "column": 5,
-      "head_match_score": 0.7932,
-      "head_pixel_score": 0.2196,
+      "head_match_score": 0.7926,
+      "head_pixel_score": 0.2605,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 160,
       "source_scale": 4,
@@ -1514,13 +1514,13 @@
       ],
       "hair_offset": [
         -32,
-        23
+        15
       ],
       "hair_bbox": [
         20,
-        71,
+        63,
         176,
-        203
+        195
       ],
       "hair_covers_head": true
     },
@@ -1553,8 +1553,8 @@
     {
       "row": 5,
       "column": 7,
-      "head_match_score": 0.7981,
-      "head_pixel_score": 0.2262,
+      "head_match_score": 0.7974,
+      "head_pixel_score": 0.2655,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 160,
       "source_scale": 4,
@@ -1566,13 +1566,13 @@
       ],
       "hair_offset": [
         -32,
-        23
+        15
       ],
       "hair_bbox": [
         20,
-        71,
+        63,
         176,
-        203
+        195
       ],
       "hair_covers_head": true
     },
@@ -1787,8 +1787,8 @@
     {
       "row": 7,
       "column": 2,
-      "head_match_score": 0.8137,
-      "head_pixel_score": 0.3614,
+      "head_match_score": 0.8087,
+      "head_pixel_score": 0.3425,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -1800,21 +1800,21 @@
       ],
       "hair_offset": [
         -32,
-        -27
+        -22
       ],
       "hair_bbox": [
         20,
-        21,
+        26,
         176,
-        141
+        146
       ],
       "hair_covers_head": true
     },
     {
       "row": 7,
       "column": 3,
-      "head_match_score": 0.8059,
-      "head_pixel_score": 0.3577,
+      "head_match_score": 0.8015,
+      "head_pixel_score": 0.336,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -1826,21 +1826,21 @@
       ],
       "hair_offset": [
         -32,
-        -28
+        -23
       ],
       "hair_bbox": [
         20,
-        20,
+        25,
         176,
-        140
+        145
       ],
       "hair_covers_head": true
     },
     {
       "row": 7,
       "column": 4,
-      "head_match_score": 0.8112,
-      "head_pixel_score": 0.354,
+      "head_match_score": 0.8037,
+      "head_pixel_score": 0.3295,
       "head_snapped_to_row": true,
       "isaac_head_source_x": 0,
       "source_scale": 4,
@@ -1852,13 +1852,13 @@
       ],
       "hair_offset": [
         -32,
-        -27
+        -22
       ],
       "hair_bbox": [
         20,
-        21,
+        26,
         176,
-        141
+        146
       ],
       "hair_covers_head": true
     },
@@ -2282,7 +2282,7 @@
       "row": 10,
       "column": 1,
       "head_match_score": 0.9671,
-      "head_pixel_score": 0.6488,
+      "head_pixel_score": 1.0,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 64,
       "source_scale": 4,
@@ -2308,7 +2308,7 @@
       "row": 10,
       "column": 2,
       "head_match_score": 0.9671,
-      "head_pixel_score": 0.6488,
+      "head_pixel_score": 1.0,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 64,
       "source_scale": 4,
@@ -2334,7 +2334,7 @@
       "row": 10,
       "column": 3,
       "head_match_score": 0.9671,
-      "head_pixel_score": 0.6488,
+      "head_pixel_score": 1.0,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 64,
       "source_scale": 4,
@@ -2360,7 +2360,7 @@
       "row": 10,
       "column": 4,
       "head_match_score": 0.9671,
-      "head_pixel_score": 0.6488,
+      "head_pixel_score": 1.0,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 64,
       "source_scale": 4,
@@ -2386,7 +2386,7 @@
       "row": 10,
       "column": 5,
       "head_match_score": 0.972,
-      "head_pixel_score": 0.7154,
+      "head_pixel_score": 1.0,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 96,
       "source_scale": 4,
@@ -2412,7 +2412,7 @@
       "row": 10,
       "column": 6,
       "head_match_score": 0.972,
-      "head_pixel_score": 0.7154,
+      "head_pixel_score": 1.0,
       "head_snapped_to_row": false,
       "isaac_head_source_x": 96,
       "source_scale": 4,
