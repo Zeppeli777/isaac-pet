@@ -23,7 +23,7 @@ SHOOT_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/shooting-at
 [ "$SHOOT_WIDTH" = "768" ] && [ "$SHOOT_HEIGHT" = "208" ] || { echo "Unexpected shooting atlas size: ${SHOOT_WIDTH}x${SHOOT_HEIGHT}" >&2; exit 1; }
 VERTICAL_WALK_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/walking-vertical-atlas.webp" | awk '/pixelWidth/ {print $2}')
 VERTICAL_WALK_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/walking-vertical-atlas.webp" | awk '/pixelHeight/ {print $2}')
-[ "$VERTICAL_WALK_WIDTH" = "768" ] && [ "$VERTICAL_WALK_HEIGHT" = "416" ] || { echo "Unexpected vertical walking atlas size: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT}" >&2; exit 1; }
+[ "$VERTICAL_WALK_WIDTH" = "1536" ] && [ "$VERTICAL_WALK_HEIGHT" = "416" ] || { echo "Unexpected vertical walking atlas size: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT}" >&2; exit 1; }
 TEAR_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/IsaacTear.png" | awk '/pixelWidth/ {print $2}')
 TEAR_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/IsaacTear.png" | awk '/pixelHeight/ {print $2}')
 [ "$TEAR_WIDTH" = "19" ] && [ "$TEAR_HEIGHT" = "19" ] || { echo "Unexpected tear size: ${TEAR_WIDTH}x${TEAR_HEIGHT}" >&2; exit 1; }
@@ -45,7 +45,7 @@ if [ -f "$APP/Contents/Resources/Agents/magdalene-portrait.png" ]; then
     exit 1
   }
 fi
-for helper in "magdalene-shooting-atlas 768 208" "magdalene-walking-vertical-atlas 768 416"; do
+for helper in "magdalene-shooting-atlas 768 208" "magdalene-walking-vertical-atlas 1536 416"; do
   set -- $helper
   HELPER="$APP/Contents/Resources/Agents/$1.webp"
   [ -f "$HELPER" ] || continue

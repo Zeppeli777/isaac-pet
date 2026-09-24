@@ -17,16 +17,26 @@ RESOURCES = ROOT / "Resources"
 QA = ROOT / "qa"
 CELL_W, CELL_H = 192, 208
 ATLAS_SIZE = (CELL_W * 8, CELL_H * 11)
-VERTICAL_WALK_COLUMNS = 4
+VERTICAL_WALK_COLUMNS = 8
 VERTICAL_WALK_ROWS = 2
 WALK_TARGET_WIDTH = 112
 WALK_HEAD_TOP = 46
+WALK_BODY_MARGIN = 28
 TEAR_SIZE = 19
 # Sampled from the Isaac tear reference: black rim, then three steps of lit blue.
 TEAR_OUTLINE = (7, 0, 0, 255)
 TEAR_SHADE = (120, 162, 248, 255)
 TEAR_BODY = (169, 197, 252, 255)
 TEAR_HIGHLIGHT = (231, 242, 254, 255)
+# The supplied vertical walk cycle is a contact sheet of 16 slices laid out as 8 columns
+# by 2 rows; its columns are not uniform and its rows differ in height, so each slice is
+# addressed by the content band the gaps leave behind.
+WALK_CYCLE_SHEET = "isaac-vertical-walk-cycle"
+WALK_CYCLE_COLUMNS = 8
+WALK_CYCLE_ROWS = 2
+# Body order of each direction's walk cycle, addressed as (row, column) on that sheet.
+WALK_DOWN_BODIES = ((1, 0), (1, 1), (1, 2), (1, 1), (1, 0), (1, 6), (1, 7), (1, 6))
+WALK_UP_BODIES = ((1, 0), (0, 7), (0, 6), (0, 7), (1, 0), (1, 4), (1, 3), (1, 4))
 
 
 def nearest(image: Image.Image, scale: int) -> Image.Image:
@@ -212,7 +222,7 @@ def make_shooting_atlas(source_sheet: Image.Image, body: Image.Image) -> list[Im
     shooting_atlas = Image.new("RGBA", (CELL_W * 4, CELL_H), (0, 0, 0, 0))
     for column, cell in enumerate(cells):
         shooting_atlas.alpha_composite(cell, (column * CELL_W, 0))
-    shooting_atlas.save(RESOURCES / "shooting-atlas.webp", lossless=True, quality=100)
+    shooting_atlas.save(RESOURCES / "shooting-atlas.webp", lossless=True, quality=100, exact=True)
 
     contact = Image.new("RGBA", shooting_atlas.size, (35, 35, 42, 255))
     draw = ImageDraw.Draw(contact)
@@ -223,28 +233,93 @@ def make_shooting_atlas(source_sheet: Image.Image, body: Image.Image) -> list[Im
     return cells
 
 
-def make_vertical_walking_atlas(source_sheet: Image.Image) -> dict[str, list[Image.Image]]:
-    """Compose the supplied two-frame front/back body cycles with their matching heads."""
-    # These are the original Isaac body cells used in the supplied reference images.
-    # Alternating A/B twice gives a four-frame loop at the same cadence as side walking.
-    source_cells = {
-        "down": [(448, 0), (480, 0), (448, 0), (480, 0)],
-        "up": [(256, 96), (288, 96), (256, 96), (288, 96)],
+def cycle_bands(lines: list[bool], count: int) -> list[tuple[int, int]]:
+    """Group a per-line ink profile into `count` content bands split by empty gaps."""
+    bands: list[tuple[int, int]] = []
+    start = None
+    for index, inked in enumerate(lines):
+        if inked and start is None:
+            start = index
+        elif not inked and start is not None:
+            bands.append((start, index - 1))
+            start = None
+    if start is not None:
+        bands.append((start, len(lines) - 1))
+    if len(bands) != count:
+        raise SystemExit(f"expected {count} walk-cycle slice bands, found {len(bands)}")
+    return bands
+
+
+def is_cycle_backdrop(pixel: tuple[int, int, int, int]) -> bool:
+    red, green, blue = pixel[:3]
+    return red > 200 and green > 200 and blue > 200 and max(red, green, blue) - min(red, green, blue) <= 12
+
+
+def cycle_slice_bands(sheet: Image.Image) -> dict[str, list[tuple[int, int]]]:
+    """Locate every slice of the walk-cycle contact sheet from its empty gutters."""
+    pixels = sheet.load()
+    columns = [
+        any(not is_cycle_backdrop(pixels[x, y]) for y in range(sheet.height))
+        for x in range(sheet.width)
+    ]
+    rows = [
+        any(not is_cycle_backdrop(pixels[x, y]) for x in range(sheet.width))
+        for y in range(sheet.height)
+    ]
+    return {
+        "columns": cycle_bands(columns, WALK_CYCLE_COLUMNS),
+        "rows": cycle_bands(rows, WALK_CYCLE_ROWS),
     }
+
+
+def cycle_slice(
+    sheet: Image.Image,
+    bands: dict[str, list[tuple[int, int]]],
+    row: int,
+    column: int,
+) -> Image.Image:
+    """Cut one slice out of the walk-cycle contact sheet and drop its light backdrop."""
+    x0, x1 = bands["columns"][column]
+    y0, y1 = bands["rows"][row]
+    block = sheet.crop((x0, y0, x1 + 1, y1 + 1)).convert("RGBA")
+    block_pixels = block.load()
+    for y in range(block.height):
+        for x in range(block.width):
+            if is_cycle_backdrop(block_pixels[x, y]):
+                block_pixels[x, y] = (0, 0, 0, 0)
+    return trimmed(block)
+
+
+def make_vertical_walking_cell(head: Image.Image, body: Image.Image) -> Image.Image:
+    """Register one already-sized body slice under the 4× head."""
+    canvas = Image.new("RGBA", (CELL_W, CELL_H), (0, 0, 0, 0))
+    scaled_head = nearest(head, 4)
+    canvas.alpha_composite(
+        body, ((CELL_W - body.width) // 2, CELL_H - body.height - WALK_BODY_MARGIN)
+    )
+    canvas.alpha_composite(scaled_head, ((CELL_W - scaled_head.width) // 2, WALK_HEAD_TOP))
+    return canvas
+
+
+def make_vertical_walking_atlas(
+    source_sheet: Image.Image, cycle_sheet: Image.Image
+) -> dict[str, list[Image.Image]]:
+    """Compose the supplied eight-frame front/back walk cycles with their matching heads."""
     heads = {
         "down": source_head(source_sheet, 0),       # normal front-facing Isaac
         "up": source_head(source_sheet, 128),        # normal back of head
     }
+    bodies = {"down": WALK_DOWN_BODIES, "up": WALK_UP_BODIES}
+    bands = cycle_slice_bands(cycle_sheet)
     rows = {
         direction: [
-            make_direction_cell(
+            make_vertical_walking_cell(
                 heads[direction],
-                source_body(source_sheet, x, y),
-                fixed_head_top=WALK_HEAD_TOP,
+                cycle_slice(cycle_sheet, bands, slice_row, slice_column),
             )
-            for x, y in cells
+            for slice_row, slice_column in cells
         ]
-        for direction, cells in source_cells.items()
+        for direction, cells in bodies.items()
     }
 
     atlas = Image.new(
@@ -255,16 +330,16 @@ def make_vertical_walking_atlas(source_sheet: Image.Image) -> dict[str, list[Ima
     for row, direction in enumerate(("down", "up")):
         for column, cell in enumerate(rows[direction]):
             atlas.alpha_composite(cell, (column * CELL_W, row * CELL_H))
-    atlas.save(RESOURCES / "walking-vertical-atlas.webp", lossless=True, quality=100)
+    atlas.save(RESOURCES / "walking-vertical-atlas.webp", lossless=True, quality=100, exact=True)
 
     contact = Image.new("RGBA", atlas.size, (35, 35, 42, 255))
     draw = ImageDraw.Draw(contact)
     for row, direction in enumerate(("down", "up")):
-        for column, ((x, y), cell) in enumerate(zip(source_cells[direction], rows[direction])):
+        for column, cell in enumerate(rows[direction]):
             contact.alpha_composite(cell, (column * CELL_W, row * CELL_H))
             draw.text(
                 (column * CELL_W + 6, row * CELL_H + 6),
-                f"walk {direction} {column + 1}: {x},{y}",
+                f"walk {direction} {column + 1}: slice {bodies[direction][column]}",
                 fill=(255, 255, 255, 255),
             )
     contact.save(QA / "vertical-walking-contact-sheet.png")
@@ -306,6 +381,9 @@ def main() -> None:
     QA.mkdir(parents=True, exist_ok=True)
     base = Image.open(SOURCE_DIR / "isaac-appearance.png").convert("RGBA")
     source_sheet = Image.open(SOURCE_DIR / "isaac-character-sheet.png").convert("RGBA")
+    cycle_sheet = Image.open(SOURCE_DIR / f"{WALK_CYCLE_SHEET}.png").convert("RGBA")
+    if cycle_sheet.size != (996, 264):
+        raise SystemExit(f"unexpected walk-cycle sheet dimensions: {cycle_sheet.size}")
     atlas = Image.open(RESOURCES / "spritesheet-source.webp").convert("RGBA")
     if atlas.size != ATLAS_SIZE:
         raise SystemExit(f"unexpected atlas dimensions: {atlas.size}")
@@ -329,11 +407,11 @@ def main() -> None:
         atlas.alpha_composite(cell, (col * CELL_W, (9 + row) * CELL_H))
         directions.append(cell)
 
-    atlas.save(RESOURCES / "spritesheet.webp", lossless=True, quality=100)
+    atlas.save(RESOURCES / "spritesheet.webp", lossless=True, quality=100, exact=True)
     make_icons(base)
     make_tear_sprite()
     shooting_cells = make_shooting_atlas(source_sheet, body)
-    vertical_walking_cells = make_vertical_walking_atlas(source_sheet)
+    vertical_walking_cells = make_vertical_walking_atlas(source_sheet, cycle_sheet)
 
     sheet = Image.new("RGBA", (CELL_W * 8, CELL_H * 2), (35, 35, 42, 255))
     draw = ImageDraw.Draw(sheet)
