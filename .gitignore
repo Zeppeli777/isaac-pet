@@ -28,6 +28,7 @@ coverage/
 .vscode/
 .vs/
 cmake-build-*/
+.zcode/
 
 # Local credentials and environment files
 .env

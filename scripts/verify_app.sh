@@ -45,6 +45,17 @@ if [ -f "$APP/Contents/Resources/Agents/magdalene-portrait.png" ]; then
     exit 1
   }
 fi
+for helper in "magdalene-shooting-atlas 768 208" "magdalene-walking-vertical-atlas 768 416"; do
+  set -- $helper
+  HELPER="$APP/Contents/Resources/Agents/$1.webp"
+  [ -f "$HELPER" ] || continue
+  HELPER_WIDTH=$(/usr/bin/sips -g pixelWidth "$HELPER" | awk '/pixelWidth/ {print $2}')
+  HELPER_HEIGHT=$(/usr/bin/sips -g pixelHeight "$HELPER" | awk '/pixelHeight/ {print $2}')
+  [ "$HELPER_WIDTH" = "$2" ] && [ "$HELPER_HEIGHT" = "$3" ] || {
+    echo "Unexpected $1 size: ${HELPER_WIDTH}x${HELPER_HEIGHT}" >&2
+    exit 1
+  }
+done
 echo "atlas: ${WIDTH}x${HEIGHT} RGBA"
 echo "shooting atlas: ${SHOOT_WIDTH}x${SHOOT_HEIGHT} Isaac source frames"
 echo "vertical walking atlas: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT} Isaac source frames"

@@ -81,7 +81,9 @@ final class SpriteAtlas {
     init(
         bundle: Bundle = .main,
         spriteSheetResource: String = "spritesheet",
-        spriteSheetSubdirectory: String? = nil
+        spriteSheetSubdirectory: String? = nil,
+        shootingAtlasResource: String? = nil,
+        verticalWalkingResource: String? = nil
     ) throws {
         guard let url = bundle.url(
             forResource: spriteSheetResource,
@@ -99,35 +101,55 @@ final class SpriteAtlas {
         guard source.width == expectedWidth, source.height == expectedHeight else {
             throw AtlasError.invalidDimensions(source.width, source.height)
         }
-        guard let shootingURL = bundle.url(forResource: "shooting-atlas", withExtension: "webp") else {
-            throw AtlasError.missingShootingResource
-        }
-        guard let shootingImage = NSImage(contentsOf: shootingURL),
-              let shootingSource = shootingImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            throw AtlasError.invalidShootingImage
-        }
+        // A role may ship its own shooting and vertical-walking atlases; without them
+        // the Isaac helper atlases are used, which leaves a bare Isaac head on those
+        // poses under a role appearance.
+        let shooting = try Self.helperImage(
+            bundle: bundle,
+            resource: shootingAtlasResource ?? "shooting-atlas",
+            subdirectory: shootingAtlasResource == nil ? nil : spriteSheetSubdirectory,
+            missing: .missingShootingResource,
+            invalid: .invalidShootingImage
+        )
         let expectedShootingWidth = AnimationCatalog.cellWidth * 4
-        guard shootingSource.width == expectedShootingWidth,
-              shootingSource.height == AnimationCatalog.cellHeight else {
-            throw AtlasError.invalidShootingDimensions(shootingSource.width, shootingSource.height)
+        guard shooting.width == expectedShootingWidth,
+              shooting.height == AnimationCatalog.cellHeight else {
+            throw AtlasError.invalidShootingDimensions(shooting.width, shooting.height)
         }
-        guard let verticalWalkingURL = bundle.url(forResource: "walking-vertical-atlas", withExtension: "webp") else {
-            throw AtlasError.missingVerticalWalkingResource
-        }
-        guard let verticalWalkingImage = NSImage(contentsOf: verticalWalkingURL),
-              let verticalWalkingSource = verticalWalkingImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            throw AtlasError.invalidVerticalWalkingImage
-        }
+        let verticalWalking = try Self.helperImage(
+            bundle: bundle,
+            resource: verticalWalkingResource ?? "walking-vertical-atlas",
+            subdirectory: verticalWalkingResource == nil ? nil : spriteSheetSubdirectory,
+            missing: .missingVerticalWalkingResource,
+            invalid: .invalidVerticalWalkingImage
+        )
         let expectedVerticalWalkingWidth = AnimationCatalog.cellWidth * AnimationCatalog.verticalWalkingColumns
         let expectedVerticalWalkingHeight = AnimationCatalog.cellHeight * AnimationCatalog.verticalWalkingRows
-        guard verticalWalkingSource.width == expectedVerticalWalkingWidth,
-              verticalWalkingSource.height == expectedVerticalWalkingHeight else {
-            throw AtlasError.invalidVerticalWalkingDimensions(verticalWalkingSource.width, verticalWalkingSource.height)
+        guard verticalWalking.width == expectedVerticalWalkingWidth,
+              verticalWalking.height == expectedVerticalWalkingHeight else {
+            throw AtlasError.invalidVerticalWalkingDimensions(verticalWalking.width, verticalWalking.height)
         }
         self.source = source
-        self.shootingSource = shootingSource
-        self.verticalWalkingSource = verticalWalkingSource
+        self.shootingSource = shooting
+        self.verticalWalkingSource = verticalWalking
         self.bundle = bundle
+    }
+
+    private static func helperImage(
+        bundle: Bundle,
+        resource: String,
+        subdirectory: String?,
+        missing: AtlasError,
+        invalid: AtlasError
+    ) throws -> CGImage {
+        guard let url = bundle.url(forResource: resource, withExtension: "webp", subdirectory: subdirectory) else {
+            throw missing
+        }
+        guard let image = NSImage(contentsOf: url),
+              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            throw invalid
+        }
+        return cgImage
     }
 
     func frame(animation: AnimationID, index: Int) throws -> SpriteFrame {
