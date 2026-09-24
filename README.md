@@ -166,7 +166,7 @@ MAG_PYTHON="/Users/zeppeli/.cache/codex-runtimes/codex-primary-runtime/dependenc
   Resources/Agents/magdalene-spritesheet.webp --require-v2
 ```
 
-原始角色图和 Golden Locks 条保存在 `Assets/Source/agents/`，不会被打进应用包。`magdalene-portrait.png` 仍供 Agent 中心使用。用户从菜单选择的外观会持久保存；Agent 的角色外观只是运行期间的临时覆盖，不会修改这项偏好。射击、泪弹和竖向行走辅助资源目前仍沿用 Isaac 的基础辅助图集，这是现有 `SpriteAtlas` 架构的范围。
+原始角色图和 Golden Locks 条保存在 `Assets/Source/agents/`，不会被打进应用包。`magdalene-portrait.png` 仍供 Agent 中心使用。用户从菜单选择的外观会持久保存；Agent 的角色外观只是运行期间的临时覆盖，不会修改这项偏好。Magdalene 另有自己的射击和竖向行走辅助图集（`Resources/Agents/magdalene-shooting-atlas.webp`、`magdalene-walking-vertical-atlas.webp`），由同一个脚本派生；角色没有提供辅助图集时（如 Judas）仍安全回退 Isaac 的基础辅助图集。泪弹是共用的圆形道具。
 
 需要从终端或自动化工具直接打开界面时，可传入 `--show-todos`、`--show-daily-plan`、`--show-notion-settings`、`--show-llm-settings` 或 `--show-agents`。测试时可用 `ISAAC_AGENT_DATA_DIR` 指向隔离的审计目录。
 

@@ -23,7 +23,7 @@ CELL_HEIGHT = 208
 COLUMNS = 8
 ROWS = 11
 EXPECTED_SIZE = (CELL_WIDTH * COLUMNS, CELL_HEIGHT * ROWS)
-VERTICAL_WALK_COLUMNS = 4
+VERTICAL_WALK_COLUMNS = 8
 VERTICAL_WALK_ROWS = 2
 HAIR_FRAME = 64
 HEAD_COLUMNS = (0, 32, 64, 96, 128, 160)
@@ -398,7 +398,7 @@ def main() -> None:
         if derived.size != expected:
             raise SystemExit(f"{name} dimensions changed unexpectedly")
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        derived.save(output_path, lossless=True, quality=100)
+        derived.save(output_path, lossless=True, quality=100, exact=True)
         reloaded = Image.open(output_path).convert("RGBA")
         if reloaded.size != expected:
             raise SystemExit(f"encoded {name} dimensions are invalid")
@@ -423,7 +423,7 @@ def main() -> None:
     if derived.size != EXPECTED_SIZE:
         raise SystemExit("derived atlas dimensions changed unexpectedly")
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    derived.save(args.output, lossless=True, quality=100)
+    derived.save(args.output, lossless=True, quality=100, exact=True)
     reloaded = Image.open(args.output).convert("RGBA")
     if reloaded.size != EXPECTED_SIZE:
         raise SystemExit("encoded WebP dimensions are invalid")

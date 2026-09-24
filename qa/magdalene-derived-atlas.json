@@ -2589,19 +2589,19 @@
     "vertical_walking_atlas": {
       "path": "Resources/Agents/magdalene-walking-vertical-atlas.webp",
       "size": [
-        768,
+        1536,
         416
       ],
       "order": [
         "down-front-head",
         "up-back-head"
       ],
-      "occupied_cells": 8,
+      "occupied_cells": 16,
       "low_confidence_head_matches": [],
       "hair_coverage_failures": [],
       "applications": [
         {
-          "head_match_score": 0.9773,
+          "head_match_score": 0.965,
           "head_pixel_score": 1.0,
           "head_snapped_to_row": false,
           "row": 0,
@@ -2627,7 +2627,7 @@
           "hair_covers_head": true
         },
         {
-          "head_match_score": 0.969,
+          "head_match_score": 0.9661,
           "head_pixel_score": 1.0,
           "head_snapped_to_row": false,
           "row": 0,
@@ -2653,7 +2653,7 @@
           "hair_covers_head": true
         },
         {
-          "head_match_score": 0.9773,
+          "head_match_score": 0.9692,
           "head_pixel_score": 1.0,
           "head_snapped_to_row": false,
           "row": 0,
@@ -2679,7 +2679,7 @@
           "hair_covers_head": true
         },
         {
-          "head_match_score": 0.969,
+          "head_match_score": 0.9661,
           "head_pixel_score": 1.0,
           "head_snapped_to_row": false,
           "row": 0,
@@ -2705,7 +2705,111 @@
           "hair_covers_head": true
         },
         {
-          "head_match_score": 0.9647,
+          "head_match_score": 0.965,
+          "head_pixel_score": 1.0,
+          "head_snapped_to_row": false,
+          "row": 0,
+          "column": 4,
+          "isaac_head_source_x": 0,
+          "source_scale": 4,
+          "golden_locks_frame": 0,
+          "mirrored": false,
+          "hair_size": [
+            256,
+            256
+          ],
+          "hair_offset": [
+            -32,
+            -22
+          ],
+          "hair_bbox": [
+            20,
+            26,
+            176,
+            146
+          ],
+          "hair_covers_head": true
+        },
+        {
+          "head_match_score": 0.9655,
+          "head_pixel_score": 1.0,
+          "head_snapped_to_row": false,
+          "row": 0,
+          "column": 5,
+          "isaac_head_source_x": 0,
+          "source_scale": 4,
+          "golden_locks_frame": 0,
+          "mirrored": false,
+          "hair_size": [
+            256,
+            256
+          ],
+          "hair_offset": [
+            -32,
+            -22
+          ],
+          "hair_bbox": [
+            20,
+            26,
+            176,
+            146
+          ],
+          "hair_covers_head": true
+        },
+        {
+          "head_match_score": 0.9689,
+          "head_pixel_score": 1.0,
+          "head_snapped_to_row": false,
+          "row": 0,
+          "column": 6,
+          "isaac_head_source_x": 0,
+          "source_scale": 4,
+          "golden_locks_frame": 0,
+          "mirrored": false,
+          "hair_size": [
+            256,
+            256
+          ],
+          "hair_offset": [
+            -32,
+            -22
+          ],
+          "hair_bbox": [
+            20,
+            26,
+            176,
+            146
+          ],
+          "hair_covers_head": true
+        },
+        {
+          "head_match_score": 0.9655,
+          "head_pixel_score": 1.0,
+          "head_snapped_to_row": false,
+          "row": 0,
+          "column": 7,
+          "isaac_head_source_x": 0,
+          "source_scale": 4,
+          "golden_locks_frame": 0,
+          "mirrored": false,
+          "hair_size": [
+            256,
+            256
+          ],
+          "hair_offset": [
+            -32,
+            -22
+          ],
+          "hair_bbox": [
+            20,
+            26,
+            176,
+            146
+          ],
+          "hair_covers_head": true
+        },
+        {
+          "head_match_score": 0.965,
           "head_pixel_score": 1.0,
           "head_snapped_to_row": false,
           "row": 1,
@@ -2731,7 +2835,7 @@
           "hair_covers_head": true
         },
         {
-          "head_match_score": 0.9653,
+          "head_match_score": 0.9652,
           "head_pixel_score": 1.0,
           "head_snapped_to_row": false,
           "row": 1,
@@ -2757,7 +2861,7 @@
           "hair_covers_head": true
         },
         {
-          "head_match_score": 0.9647,
+          "head_match_score": 0.9731,
           "head_pixel_score": 1.0,
           "head_snapped_to_row": false,
           "row": 1,
@@ -2783,11 +2887,115 @@
           "hair_covers_head": true
         },
         {
-          "head_match_score": 0.9653,
+          "head_match_score": 0.9652,
           "head_pixel_score": 1.0,
           "head_snapped_to_row": false,
           "row": 1,
           "column": 3,
+          "isaac_head_source_x": 128,
+          "source_scale": 4,
+          "golden_locks_frame": 4,
+          "mirrored": false,
+          "hair_size": [
+            256,
+            256
+          ],
+          "hair_offset": [
+            -32,
+            -22
+          ],
+          "hair_bbox": [
+            20,
+            26,
+            176,
+            158
+          ],
+          "hair_covers_head": true
+        },
+        {
+          "head_match_score": 0.965,
+          "head_pixel_score": 1.0,
+          "head_snapped_to_row": false,
+          "row": 1,
+          "column": 4,
+          "isaac_head_source_x": 128,
+          "source_scale": 4,
+          "golden_locks_frame": 4,
+          "mirrored": false,
+          "hair_size": [
+            256,
+            256
+          ],
+          "hair_offset": [
+            -32,
+            -22
+          ],
+          "hair_bbox": [
+            20,
+            26,
+            176,
+            158
+          ],
+          "hair_covers_head": true
+        },
+        {
+          "head_match_score": 0.9649,
+          "head_pixel_score": 1.0,
+          "head_snapped_to_row": false,
+          "row": 1,
+          "column": 5,
+          "isaac_head_source_x": 128,
+          "source_scale": 4,
+          "golden_locks_frame": 4,
+          "mirrored": false,
+          "hair_size": [
+            256,
+            256
+          ],
+          "hair_offset": [
+            -32,
+            -22
+          ],
+          "hair_bbox": [
+            20,
+            26,
+            176,
+            158
+          ],
+          "hair_covers_head": true
+        },
+        {
+          "head_match_score": 0.9721,
+          "head_pixel_score": 1.0,
+          "head_snapped_to_row": false,
+          "row": 1,
+          "column": 6,
+          "isaac_head_source_x": 128,
+          "source_scale": 4,
+          "golden_locks_frame": 4,
+          "mirrored": false,
+          "hair_size": [
+            256,
+            256
+          ],
+          "hair_offset": [
+            -32,
+            -22
+          ],
+          "hair_bbox": [
+            20,
+            26,
+            176,
+            158
+          ],
+          "hair_covers_head": true
+        },
+        {
+          "head_match_score": 0.9649,
+          "head_pixel_score": 1.0,
+          "head_snapped_to_row": false,
+          "row": 1,
+          "column": 7,
           "isaac_head_source_x": 128,
           "source_scale": 4,
           "golden_locks_frame": 4,

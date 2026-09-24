@@ -450,7 +450,7 @@
   "vertical_walking_atlas": {
     "path": "Resources/walking-vertical-atlas.webp",
     "size": [
-      768,
+      1536,
       416
     ],
     "order": [
@@ -540,6 +540,50 @@
             180
           ],
           "matches_composed_cell": true
+        },
+        {
+          "index": 4,
+          "components": 1,
+          "bbox": [
+            40,
+            46,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 5,
+          "components": 1,
+          "bbox": [
+            40,
+            46,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 6,
+          "components": 1,
+          "bbox": [
+            40,
+            46,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 7,
+          "components": 1,
+          "bbox": [
+            40,
+            46,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
         }
       ],
       "up": [
@@ -578,6 +622,50 @@
         },
         {
           "index": 3,
+          "components": 1,
+          "bbox": [
+            40,
+            46,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 4,
+          "components": 1,
+          "bbox": [
+            40,
+            46,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 5,
+          "components": 1,
+          "bbox": [
+            40,
+            46,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 6,
+          "components": 1,
+          "bbox": [
+            40,
+            46,
+            152,
+            180
+          ],
+          "matches_composed_cell": true
+        },
+        {
+          "index": 7,
           "components": 1,
           "bbox": [
             40,

@@ -175,7 +175,7 @@ public enum AnimationCatalog {
     public static let cellHeight = 208
     public static let columns = 8
     public static let rows = 11
-    public static let verticalWalkingColumns = 4
+    public static let verticalWalkingColumns = 8
     public static let verticalWalkingRows = 2
 
     public static let specs: [AnimationID: AnimationSpec] = [
@@ -191,8 +191,8 @@ public enum AnimationCatalog {
     ]
 
     public static let verticalWalkingSpecs: [VerticalWalkingDirection: AnimationSpec] = [
-        .down: AnimationSpec(row: 0, frameCount: 4, frameDuration: 0.09, loops: true),
-        .up: AnimationSpec(row: 1, frameCount: 4, frameDuration: 0.09, loops: true),
+        .down: AnimationSpec(row: 0, frameCount: 8, frameDuration: 0.09, loops: true),
+        .up: AnimationSpec(row: 1, frameCount: 8, frameDuration: 0.09, loops: true),
     ]
 
     public static func spec(for animation: AnimationID) -> AnimationSpec {
