@@ -68,7 +68,7 @@ scripts/install_app.sh
 - 拖拽 Isaac：移动到另一个位置或屏幕，松手后停在该屏幕底部
 - 右键 Isaac：打开动作与设置菜单
 - 对话气泡：从右键或菜单栏菜单选择随机文字、颜文字或“自定义气泡…”
-- LLM：先从“LLM 设置…”保存 API Key 和模型，再用“问 Isaac（LLM）…”主动发送单条问题
+- LLM：先从“LLM 设置…”填写 Base URL、API Key、模型并保存，再用“问 Isaac（LLM）…”主动发送单条问题
 - Todo：从菜单进入“新建 Todo…”、“查看 Todo…”或“查看今日计划…”。今日计划只读本机 Todo，按逾期、今天到期、后续到期、无日期的顺序给出最多三项重点，也可以让 Isaac 显示下一项
 - Apple 提醒事项：从 Todo 子菜单选择“从 Apple 提醒事项同步…”，授权后选择一个列表或全部列表
 - Notion：从 Todo 子菜单进入“Notion 设置…”，保存 internal integration token 与 data source ID 后手动同步
@@ -111,13 +111,17 @@ Notion 同步同样采用手动只读模式：
 
 LLM 默认关闭，不影响本地气泡、Todo 或 Agent：
 
-- API Key 只保存在 macOS Keychain，不写入 UserDefaults、Todo、Agent 审计或仓库。
-- 打开菜单不会读取钥匙串；只有主动进入“LLM 设置…”、提问或断开 LLM 时，才可能出现 macOS 钥匙串授权。
-- 只有点击“问 Isaac（LLM）…”并确认发送时，当前输入才会发往 `https://api.openai.com/v1/responses`。
-- 请求不会附带 Todo、Notion 内容、文件、桌面数据或历史对话，也不开放任何模型工具。
-- 请求显式设置 `store: false`，30 秒超时，并可从菜单取消；回答经过 80 字气泡长度限制。
-- 默认模型为 `gpt-5.6-luna`，可以在设置中改成账号实际可用的模型 ID。
-- “断开 LLM”会删除钥匙串里的 API Key，本地功能继续可用。
+- “LLM 设置…”中填写 Base URL、API Key 和模型 ID，并选择 API 格式：OpenAI 兼容（发往 `{Base URL}/chat/completions`）或 Anthropic 兼容（发往 `{Base URL}/v1/messages`）。兼容任意自建或第三方服务，本地服务可以把 API Key 留空。
+- 连接配置保存在本机文件（权限 600），不使用 macOS 钥匙串，读取时不会出现系统授权弹窗：
+
+  ```text
+  ~/Library/Application Support/IsaacPet/llm-config.json
+  ```
+
+- 弹窗里的“导入配置文件…”可以导入上面格式的 JSON；`apiFormat` 支持 `openai` / `anthropic`，缺省时按 Base URL 推断。测试时可用环境变量 `ISAAC_LLM_CONFIG_PATH` 重定向该文件。
+- 只有点击“问 Isaac（LLM）…”并确认发送时，当前输入才会发往所配置的服务；请求不会附带 Todo、Notion 内容、文件、桌面数据或历史对话，也不开放任何模型工具。
+- 30 秒超时，可从菜单取消；回答经过 80 字气泡长度限制。
+- “断开 LLM”会删除配置文件，本地功能继续可用。旧版本保存在钥匙串里的 OpenAI API Key 不再被读取，如需清理可在“钥匙串访问”中搜索 `com.fanmade.isaacpet.openai` 删除。
 
 ## Agent 安全模型
 

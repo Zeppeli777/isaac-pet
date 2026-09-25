@@ -11,8 +11,6 @@ final class SettingsStore {
         static let horizontalPosition = "pet.horizontalPosition"
         static let appleReminderCalendar = "integration.appleReminders.calendarIdentifier"
         static let notionDataSource = "integration.notion.dataSourceIdentifier"
-        static let llmModel = "integration.openai.model"
-        static let llmCredentialConfigured = "integration.openai.credentialConfigured"
         static let activeAppearance = "pet.activeAppearance"
     }
 
@@ -24,7 +22,6 @@ final class SettingsStore {
             Key.scale: 1.0,
             Key.roaming: true,
             Key.horizontalPosition: 0.82,
-            Key.llmModel: "gpt-5.6-luna",
         ])
     }
 
@@ -52,18 +49,6 @@ final class SettingsStore {
     var notionDataSourceIdentifier: String? {
         get { defaults.string(forKey: Key.notionDataSource) }
         set { defaults.set(newValue, forKey: Key.notionDataSource) }
-    }
-
-    var llmModel: String {
-        get { defaults.string(forKey: Key.llmModel) ?? "gpt-5.6-luna" }
-        set { defaults.set(newValue, forKey: Key.llmModel) }
-    }
-
-    /// This is only a UI hint. The API key itself remains exclusively in Keychain.
-    /// Reading this flag must never trigger a Keychain access prompt.
-    var llmCredentialConfigured: Bool {
-        get { defaults.bool(forKey: Key.llmCredentialConfigured) }
-        set { defaults.set(newValue, forKey: Key.llmCredentialConfigured) }
     }
 
     var activeAppearance: String {

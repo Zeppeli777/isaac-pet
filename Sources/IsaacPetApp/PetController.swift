@@ -22,7 +22,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private let appleRemindersAdapter: AppleRemindersAdapter
     private let notionTodoAdapter: NotionTodoAdapter
     private let notionCredentialStore: NotionCredentialStore
-    private let llmCredentialStore: LLMCredentialStore
+    private let llmConfigStore = LLMConfigFileStore()
     private let llmClient: any LLMReplyProvider
     private let agentAuditStore: AgentAuditStore
     private let menu = NSMenu(title: "Isaac Pet")
@@ -100,8 +100,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         appleRemindersAdapter = AppleRemindersAdapter()
         notionTodoAdapter = NotionTodoAdapter()
         notionCredentialStore = NotionCredentialStore()
-        llmCredentialStore = LLMCredentialStore()
-        llmClient = OpenAIResponsesClient()
+        llmClient = HTTPLLMClient()
         agentAuditStore = try AgentAuditStore()
         panel = PetPanel(
             contentRect: NSRect(origin: .zero, size: size),
@@ -277,7 +276,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         // system authorization dialog behind the menu and leave its password field
         // without keyboard focus. The non-secret setting is updated only by explicit
         // LLM actions below.
-        menu.item(withTag: 120)?.isEnabled = !isPlayMode && settingsStore.llmCredentialConfigured
+        menu.item(withTag: 120)?.isEnabled = !isPlayMode && llmConfigured
         menu.item(withTag: 121)?.isEnabled = !isPlayMode && llmTask != nil
         let pendingTodoCount = TodoPolicy.pending(todoStore.items).count
         menu.item(withTag: 400)?.title = pendingTodoCount == 0 ? "Todo" : "Todo（\(pendingTodoCount)）"
@@ -937,38 +936,40 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         showSpeech(input.stringValue)
     }
 
+    private var llmConfigured: Bool {
+        guard let config = try? llmConfigStore.load() else { return false }
+        return (try? config.validate()) != nil
+    }
+
     @objc private func configureLLM() {
         guard !isPlayMode, llmTask == nil else { return }
         targetX = nil
         NSApp.activate(ignoringOtherApps: true)
-        let existingToken: String?
+        var existingConfig: LLMConnectionConfig?
         do {
-            existingToken = try llmCredentialStore.loadToken()
-            settingsStore.llmCredentialConfigured = existingToken != nil
+            existingConfig = try llmConfigStore.load()
         } catch {
-            presentLLMMessage(title: "无法读取 LLM 设置", message: error.localizedDescription)
-            return
+            presentLLMMessage(
+                title: "无法读取 LLM 设置",
+                message: "配置文件无法解析（\(error.localizedDescription)）。可以直接重新填写并保存，旧文件会被覆盖。"
+            )
         }
 
-        let tokenField = NSSecureTextField(string: "")
-        tokenField.placeholderString = existingToken == nil ? "sk-…" : "已保存在钥匙串；留空保持不变"
-        let modelField = NSTextField(string: settingsStore.llmModel)
-        let tokenLabel = NSTextField(labelWithString: "API Key")
-        let modelLabel = NSTextField(labelWithString: "模型")
-        let accessory = NSView(frame: NSRect(x: 0, y: 0, width: 460, height: 70))
-        tokenLabel.frame = NSRect(x: 0, y: 42, width: 72, height: 22)
-        tokenField.frame = NSRect(x: 80, y: 39, width: 380, height: 26)
-        modelLabel.frame = NSRect(x: 0, y: 7, width: 72, height: 22)
-        modelField.frame = NSRect(x: 80, y: 4, width: 250, height: 26)
-        for view in [tokenLabel, tokenField, modelLabel, modelField] { accessory.addSubview(view) }
-
+        let accessory = LLMSettingsAccessoryView(existingConfig: existingConfig)
+        accessory.onError = { [weak self] title, message in
+            self?.presentLLMMessage(title: title, message: message)
+        }
         let alert = NSAlert()
         alert.messageText = "可选 LLM 连接"
-        alert.informativeText = "默认关闭。API Key 仅保存在 macOS 钥匙串；只有你主动点击“问 Isaac”时，输入文字才会发送到 api.openai.com。不会发送 Todo、Notion 内容或桌面数据。"
+        alert.informativeText = """
+            配置只保存在本机文件 \(Self.abbreviatedHomePath(llmConfigStore.fileURL.path))，不会上传。\
+            只有你主动点击“问 Isaac”时，输入文字才会发送到上面配置的服务；不会发送 Todo、Notion 内容或桌面数据。
+            """
         alert.accessoryView = accessory
         alert.addButton(withTitle: "保存")
         alert.addButton(withTitle: "断开")
         alert.addButton(withTitle: "取消")
+        alert.window.initialFirstResponder = accessory.initialFirstResponder
         let response = alert.runModal()
         panel.orderFrontRegardless()
         guard response != .alertThirdButtonReturn else { return }
@@ -977,32 +978,27 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             return
         }
 
-        let model = modelField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !model.isEmpty, !model.contains(where: \.isWhitespace) else {
-            presentLLMMessage(title: "模型名称无效", message: "请输入一个不含空格的模型 ID。")
-            return
-        }
+        let config = accessory.currentConfig()
         do {
-            let newToken = tokenField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !newToken.isEmpty {
-                try llmCredentialStore.saveToken(newToken)
-                settingsStore.llmCredentialConfigured = true
-            } else if existingToken == nil {
-                throw LLMCredentialError.emptyToken
-            }
-            settingsStore.llmModel = String(model.prefix(100))
+            try config.validate()
+            try llmConfigStore.save(config)
             showSpeech("LLM 设置已保存。只有主动提问才会联网。")
         } catch {
             presentLLMMessage(title: "无法保存 LLM 设置", message: error.localizedDescription)
         }
     }
 
+    private static func abbreviatedHomePath(_ path: String) -> String {
+        let home = NSHomeDirectory()
+        guard path.hasPrefix(home) else { return path }
+        return "~" + path.dropFirst(home.count)
+    }
+
     @objc private func disconnectLLM() {
         guard llmTask == nil else { return }
         NSApp.activate(ignoringOtherApps: true)
         do {
-            try llmCredentialStore.deleteToken()
-            settingsStore.llmCredentialConfigured = false
+            try llmConfigStore.delete()
             showSpeech("LLM 已断开，本地功能不受影响。")
         } catch {
             presentLLMMessage(title: "无法断开 LLM", message: error.localizedDescription)
@@ -1012,17 +1008,16 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     @objc private func askLLM() {
         guard !isPlayMode, llmTask == nil else { return }
         NSApp.activate(ignoringOtherApps: true)
-        let token: String
+        let config: LLMConnectionConfig
         do {
-            guard let storedToken = try llmCredentialStore.loadToken() else {
-                settingsStore.llmCredentialConfigured = false
+            guard let storedConfig = try llmConfigStore.load() else {
                 configureLLM()
                 return
             }
-            settingsStore.llmCredentialConfigured = true
-            token = storedToken
+            try storedConfig.validate()
+            config = storedConfig
         } catch {
-            presentLLMMessage(title: "无法读取 API Key", message: error.localizedDescription)
+            presentLLMMessage(title: "无法读取 LLM 设置", message: error.localizedDescription)
             return
         }
 
@@ -1030,7 +1025,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         inputField.placeholderString = "输入一个问题（最多 500 字）"
         let alert = NSAlert()
         alert.messageText = "问 Isaac"
-        alert.informativeText = "下面的文字会发送到 api.openai.com；不会附带 Todo、Notion 内容、文件或历史对话。"
+        alert.informativeText = "下面的文字会发送到 \(config.endpointURL()?.host ?? "你配置的服务")；不会附带 Todo、Notion 内容、文件或历史对话。"
         alert.accessoryView = inputField
         alert.addButton(withTitle: "发送")
         alert.addButton(withTitle: "取消")
@@ -1052,8 +1047,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             do {
                 let answer = try await llmClient.respond(
                     to: boundedInput,
-                    model: settingsStore.llmModel,
-                    token: token
+                    config: config
                 )
                 try Task.checkCancellation()
                 llmTask = nil
