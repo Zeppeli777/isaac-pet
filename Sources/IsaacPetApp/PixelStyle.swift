@@ -26,13 +26,21 @@ enum PixelStyle {
 
     /// A quarter-circle quantized onto the pixel grid, built from per-row rects so the
     /// corners step like the game's message box instead of antialiasing into a curve.
+    /// Total over degenerate geometry (empty/negative/non-finite rects yield an empty
+    /// path) so transient layout frames can never trap the render pass.
     static func pixelRoundedPath(_ rect: NSRect, radius: CGFloat) -> NSBezierPath {
         let path = NSBezierPath()
+        guard rect.width.isFinite, rect.height.isFinite,
+              rect.minX.isFinite, rect.minY.isFinite,
+              rect.width > 0, rect.height > 0 else {
+            return path
+        }
+        let clampedRadius = max(0, min(radius, min(rect.width, rect.height) / 2))
+        let radiusInt = Int(clampedRadius)
         let left = Int(rect.minX.rounded(.down))
         let right = Int(rect.maxX.rounded(.up))
         let bottom = Int(rect.minY.rounded(.down))
-        let top = Int(rect.maxY.rounded(.up))
-        let radiusInt = Int(radius)
+        let top = max(bottom, Int(rect.maxY.rounded(.up)))
         for y in bottom..<top {
             let depth = min(y - bottom, top - 1 - y)
             let inset: Int
