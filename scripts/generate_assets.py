@@ -28,6 +28,20 @@ TEAR_OUTLINE = (7, 0, 0, 255)
 TEAR_SHADE = (120, 162, 248, 255)
 TEAR_BODY = (169, 197, 252, 255)
 TEAR_HIGHLIGHT = (231, 242, 254, 255)
+# Sampled from the in-game emote bubble references (Assets/Source/Emotes): tan paper,
+# its light/shadow variants, the dark outline and the white of the eyes.
+EMOTE_TAN = (193, 173, 150, 255)
+EMOTE_TAN_LIGHT = (198, 179, 156, 255)
+EMOTE_TAN_SHADOW = (151, 133, 119, 255)
+EMOTE_OUTLINE = (52, 47, 44, 255)
+EMOTE_WHITE = (255, 255, 255, 255)
+EMOTE_PALETTE = (EMOTE_TAN, EMOTE_TAN_LIGHT, EMOTE_TAN_SHADOW, EMOTE_OUTLINE, EMOTE_WHITE)
+# The paper texture flickers between the tan variants, so they must dominate a cell
+# decisively before they are allowed to speckle the flat body.
+EMOTE_SOFT_COLORS = {EMOTE_TAN_LIGHT, EMOTE_TAN_SHADOW}
+EMOTE_SOFT_SHARE = 0.55
+EMOTE_GRID_WIDTH = 48
+EMOTE_MAGNIFICATION = 10
 # The supplied vertical walk cycle is a contact sheet of 16 slices laid out as 8 columns
 # by 2 rows; its columns are not uniform and its rows differ in height, so each slice is
 # addressed by the content band the gaps leave behind.
@@ -212,6 +226,128 @@ def tear_validation(tear: Image.Image) -> dict[str, object]:
         "palette": sorted(color[:3] for color in colors) == sorted(color[:3] for color in palette),
         "contact_sheet": "qa/tear-contact-sheet.png",
     }
+
+
+def is_emote_backdrop(pixel: tuple[int, ...]) -> bool:
+    red, green, blue = pixel[:3]
+    return red > 242 and green > 242 and blue > 242
+
+
+def drop_emote_backdrop(image: Image.Image) -> Image.Image:
+    """Flood the white page colour away from the borders so interior whites survive."""
+    image = image.convert("RGBA")
+    pixels = image.load()
+    seen = [[False] * image.width for _ in range(image.height)]
+    stack: list[tuple[int, int]] = []
+    for x in range(image.width):
+        for y in (0, image.height - 1):
+            if is_emote_backdrop(pixels[x, y]) and not seen[y][x]:
+                seen[y][x] = True
+                stack.append((x, y))
+    for y in range(image.height):
+        for x in (0, image.width - 1):
+            if is_emote_backdrop(pixels[x, y]) and not seen[y][x]:
+                seen[y][x] = True
+                stack.append((x, y))
+    while stack:
+        x, y = stack.pop()
+        pixels[x, y] = (0, 0, 0, 0)
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if 0 <= nx < image.width and 0 <= ny < image.height \
+                    and not seen[ny][nx] and is_emote_backdrop(pixels[nx, ny]):
+                seen[ny][nx] = True
+                stack.append((nx, ny))
+    return image
+
+
+def nearest_emote_color(pixel: tuple[int, ...]) -> tuple[int, int, int, int]:
+    best, best_distance = EMOTE_TAN, 1 << 30
+    for color in EMOTE_PALETTE:
+        distance = sum((pixel[index] - color[index]) ** 2 for index in range(3))
+        if distance < best_distance:
+            best_distance, best = distance, color
+    return best
+
+
+def make_emote_bubble(source: Image.Image) -> Image.Image:
+    """Grid-snap one reference emote bubble onto the shared pixel grid."""
+    image = drop_emote_backdrop(source)
+    image = image.crop(image.getbbox())
+    width = EMOTE_GRID_WIDTH
+    height = round(image.height / image.width * width)
+    pixels = image.load()
+    output = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    out = output.load()
+    for cell_y in range(height):
+        y0, y1 = image.height * cell_y // height, image.height * (cell_y + 1) // height
+        for cell_x in range(width):
+            x0, x1 = image.width * cell_x // width, image.width * (cell_x + 1) // width
+            votes: dict[tuple[int, int, int, int], int] = {}
+            total = 0
+            for y in range(y0, y1):
+                for x in range(x0, x1):
+                    if pixels[x, y][3]:
+                        color = nearest_emote_color(pixels[x, y])
+                        votes[color] = votes.get(color, 0) + 1
+                        total += 1
+            if not votes:
+                continue
+            ranked = sorted(votes.items(), key=lambda item: -item[1])
+            color = ranked[0][0]
+            # Texture speckle guard: a soft colour only survives with a decisive majority.
+            if color in EMOTE_SOFT_COLORS and ranked[0][1] < total * EMOTE_SOFT_SHARE and len(ranked) > 1:
+                color = ranked[1][0]
+            out[cell_x, cell_y] = color
+    return output
+
+
+def make_emote_bubbles() -> dict[str, Image.Image]:
+    sources = {
+        "sad": "reference-emote-sad.png",
+        "shocked": "reference-emote-shocked.png",
+        "happy": "reference-emote-happy.png",
+    }
+    bubbles = {}
+    for kind, filename in sources.items():
+        bubble = make_emote_bubble(Image.open(SOURCE_DIR / "Emotes" / filename))
+        bubbles[kind] = bubble
+        bubble.save(RESOURCES / f"Emote{kind.capitalize()}.png")
+
+    cell = max(bubble.height for bubble in bubbles.values()) * EMOTE_MAGNIFICATION
+    reference_height = 240
+    sheet = Image.new("RGBA", (900 + cell + 30, cell + 30), (35, 35, 42, 255))
+    draw = ImageDraw.Draw(sheet)
+    x = 10
+    for kind in ("sad", "shocked", "happy"):
+        reference = Image.open(SOURCE_DIR / "Emotes" / sources[kind]).convert("RGBA")
+        reference = reference.crop(reference.getbbox())
+        scaled = reference.resize(
+            (round(reference.width * reference_height / reference.height), reference_height),
+            Image.Resampling.NEAREST,
+        )
+        sheet.alpha_composite(scaled, (x, 15))
+        draw.text((x, 2), f"{kind} ref", fill=(255, 255, 255, 255))
+        x += scaled.width + 12
+    for kind in ("sad", "shocked", "happy"):
+        magnified = nearest(bubbles[kind], EMOTE_MAGNIFICATION)
+        sheet.alpha_composite(magnified, (x, 15))
+        draw.text((x, 2), f"{kind} {bubbles[kind].width}x{bubbles[kind].height}", fill=(255, 255, 255, 255))
+        x += magnified.width + 10
+    sheet.save(QA / "emotes-contact-sheet.png")
+    return bubbles
+
+
+def emote_validation(bubbles: dict[str, Image.Image]) -> dict[str, object]:
+    cells = {}
+    for kind, bubble in bubbles.items():
+        colors = {color for color in bubble.getdata() if color[3]}
+        cells[kind] = {
+            "path": f"Resources/Emote{kind.capitalize()}.png",
+            "size": [bubble.width, bubble.height],
+            "components": connected_components(bubble),
+            "palette": colors <= set(EMOTE_PALETTE),
+        }
+    return cells
 
 
 def make_shooting_atlas(source_sheet: Image.Image, body: Image.Image) -> list[Image.Image]:
@@ -410,6 +546,7 @@ def main() -> None:
     atlas.save(RESOURCES / "spritesheet.webp", lossless=True, quality=100, exact=True)
     make_icons(base)
     make_tear_sprite()
+    emote_bubbles = make_emote_bubbles()
     shooting_cells = make_shooting_atlas(source_sheet, body)
     vertical_walking_cells = make_vertical_walking_atlas(source_sheet, cycle_sheet)
 
@@ -528,6 +665,7 @@ def main() -> None:
             },
         },
         "tear": tear_validation(final_tear),
+        "emotes": emote_validation(emote_bubbles),
     }
     validation["ok"] = atlas.size == ATLAS_SIZE and all(
         item["components"] == 1 and item["matches_composed_cell"]
@@ -567,6 +705,8 @@ def main() -> None:
         and tear["round"]
         and tear["palette"]
     )
+    for emote in validation["emotes"].values():
+        validation["ok"] = validation["ok"] and emote["components"] == 1 and emote["palette"]
     (QA / "assets-validation.json").write_text(json.dumps(validation, indent=2) + "\n")
     if not validation["ok"]:
         raise SystemExit("asset validation failed")
