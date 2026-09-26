@@ -117,6 +117,18 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         showIdleFrame()
         panel.orderFrontRegardless()
         showSpeech("嗨！ :)")
+        PixelDialog.onDismiss = { [weak self] in
+            guard let self else { return }
+            panel.orderFrontRegardless()
+            let toolWindows = [
+                todoWindowController?.window,
+                agentWindowController?.window,
+                dailyPlanWindowController?.window,
+            ]
+            if !toolWindows.contains(where: { $0?.isVisible == true }) {
+                NSApp.deactivate()
+            }
+        }
         startTimer()
         restoreActiveAgentTask()
         synchronizeTodoReminders()
@@ -934,22 +946,13 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         guard !isPlayMode else { return }
         targetX = nil
 
-        let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
-        input.placeholderString = "输入文字或颜文字（最多 80 字）"
-        let alert = NSAlert()
-        alert.messageText = "让 Isaac 说什么？"
-        alert.informativeText = "内容只会显示在本机桌面，不会上传。"
-        alert.accessoryView = input
-        alert.addButton(withTitle: "显示气泡")
-        alert.addButton(withTitle: "取消")
-
-        NSApp.activate(ignoringOtherApps: true)
-        alert.window.initialFirstResponder = input
-        let response = alert.runModal()
-        panel.orderFrontRegardless()
-        NSApp.deactivate()
-        guard response == .alertFirstButtonReturn else { return }
-        showSpeech(input.stringValue)
+        guard let input = PixelDialog.prompt(
+            title: "让 Isaac 说什么？",
+            message: "内容只会显示在本机桌面，不会上传。",
+            placeholder: "输入文字或颜文字（最多 80 字）",
+            confirmTitle: "显示气泡"
+        ) else { return }
+        showSpeech(input)
     }
 
     private var llmConfigured: Bool {
@@ -960,12 +963,11 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     @objc private func configureLLM() {
         guard !isPlayMode, llmTask == nil else { return }
         targetX = nil
-        NSApp.activate(ignoringOtherApps: true)
         var existingConfig: LLMConnectionConfig?
         do {
             existingConfig = try llmConfigStore.load()
         } catch {
-            presentLLMMessage(
+            presentMessage(
                 title: "无法读取 LLM 设置",
                 message: "配置文件无法解析（\(error.localizedDescription)）。可以直接重新填写并保存，旧文件会被覆盖。"
             )
@@ -973,23 +975,24 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
 
         let accessory = LLMSettingsAccessoryView(existingConfig: existingConfig)
         accessory.onError = { [weak self] title, message in
-            self?.presentLLMMessage(title: title, message: message)
+            self?.presentMessage(title: title, message: message)
         }
-        let alert = NSAlert()
-        alert.messageText = "可选 LLM 连接"
-        alert.informativeText = """
+        let response = PixelDialog.presentForm(
+            title: "可选 LLM 连接",
+            message: """
             配置只保存在本机文件 \(Self.abbreviatedHomePath(llmConfigStore.fileURL.path))，不会上传。\
             只有你主动点击“问 Isaac”时，输入文字才会发送到上面配置的服务；不会发送 Todo、Notion 内容或桌面数据。
-            """
-        alert.accessoryView = accessory
-        alert.addButton(withTitle: "保存")
-        alert.addButton(withTitle: "断开")
-        alert.addButton(withTitle: "取消")
-        alert.window.initialFirstResponder = accessory.initialFirstResponder
-        let response = alert.runModal()
-        panel.orderFrontRegardless()
-        guard response != .alertThirdButtonReturn else { return }
-        if response == .alertSecondButtonReturn {
+            """,
+            content: accessory,
+            initialFirstResponder: accessory.initialFirstResponder,
+            buttons: [
+                PixelDialog.Button(identifier: "save", title: "保存", isDefault: true),
+                PixelDialog.Button(identifier: "disconnect", title: "断开"),
+                PixelDialog.Button(identifier: "cancel", title: "取消", isCancel: true),
+            ]
+        )
+        guard response != "cancel" else { return }
+        if response == "disconnect" {
             disconnectLLM()
             return
         }
@@ -1000,7 +1003,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             try llmConfigStore.save(config)
             showSpeech("LLM 设置已保存。只有主动提问才会联网。")
         } catch {
-            presentLLMMessage(title: "无法保存 LLM 设置", message: error.localizedDescription)
+            presentMessage(title: "无法保存 LLM 设置", message: error.localizedDescription)
         }
     }
 
@@ -1017,13 +1020,12 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             try llmConfigStore.delete()
             showSpeech("LLM 已断开，本地功能不受影响。")
         } catch {
-            presentLLMMessage(title: "无法断开 LLM", message: error.localizedDescription)
+            presentMessage(title: "无法断开 LLM", message: error.localizedDescription)
         }
     }
 
     @objc private func askLLM() {
         guard !isPlayMode, llmTask == nil else { return }
-        NSApp.activate(ignoringOtherApps: true)
         let config: LLMConnectionConfig
         do {
             guard let storedConfig = try llmConfigStore.load() else {
@@ -1033,24 +1035,17 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             try storedConfig.validate()
             config = storedConfig
         } catch {
-            presentLLMMessage(title: "无法读取 LLM 设置", message: error.localizedDescription)
+            presentMessage(title: "无法读取 LLM 设置", message: error.localizedDescription)
             return
         }
 
-        let inputField = NSTextField(frame: NSRect(x: 0, y: 0, width: 380, height: 26))
-        inputField.placeholderString = "输入一个问题（最多 500 字）"
-        let alert = NSAlert()
-        alert.messageText = "问 Isaac"
-        alert.informativeText = "下面的文字会发送到 \(config.endpointURL()?.host ?? "你配置的服务")；不会附带 Todo、Notion 内容、文件或历史对话。"
-        alert.accessoryView = inputField
-        alert.addButton(withTitle: "发送")
-        alert.addButton(withTitle: "取消")
-        NSApp.activate(ignoringOtherApps: true)
-        alert.window.initialFirstResponder = inputField
-        let response = alert.runModal()
-        panel.orderFrontRegardless()
-        guard response == .alertFirstButtonReturn else { return }
-        let input = inputField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let rawInput = PixelDialog.prompt(
+            title: "问 Isaac",
+            message: "下面的文字会发送到 \(config.endpointURL()?.host ?? "你配置的服务")；不会附带 Todo、Notion 内容、文件或历史对话。",
+            placeholder: "输入一个问题（最多 500 字）",
+            confirmTitle: "发送"
+        ) else { return }
+        let input = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else {
             showSpeech("先写点什么再问我吧。")
             return
@@ -1083,12 +1078,8 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         llmTask?.cancel()
     }
 
-    private func presentLLMMessage(title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.runModal()
-        panel.orderFrontRegardless()
+    private func presentMessage(title: String, message: String) {
+        PixelDialog.presentMessage(title: title, message: message)
     }
 
     @objc private func addTodo() {
@@ -1135,7 +1126,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             do {
                 let granted = try await appleRemindersAdapter.requestReadAccess()
                 guard granted else {
-                    presentAppleRemindersMessage(
+                    presentMessage(
                         title: "未获得提醒事项权限",
                         message: "可在“系统设置 → 隐私与安全性 → 提醒事项”中允许 Isaac Pet 读取。应用不会修改或删除系统提醒事项。"
                     )
@@ -1159,7 +1150,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
                 perform(.observe)
                 showSpeech("提醒事项同步完成：新增 \(summary.inserted)，更新 \(summary.updated)。")
             } catch {
-                presentAppleRemindersMessage(
+                presentMessage(
                     title: "无法同步 Apple 提醒事项",
                     message: error.localizedDescription
                 )
@@ -1170,31 +1161,33 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     /// Returns `.some(nil)` for all lists, `.some(id)` for one list, and `nil` for cancel.
     private func chooseAppleReminderList(from lists: [AppleReminderList]) -> String?? {
         let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 300, height: 26))
-        popup.addItem(withTitle: "所有列表")
-        for list in lists {
-            popup.addItem(withTitle: list.title)
-            popup.lastItem?.representedObject = list.identifier
+        popup.font = PixelFont.speech
+        let items: [(String, String?)] = [("所有列表", nil)] + lists.map { ($0.title, $0.identifier) }
+        for (title, identifier) in items {
+            popup.addItem(withTitle: title)
+            popup.lastItem?.representedObject = identifier
+            popup.lastItem?.attributedTitle = NSAttributedString(
+                string: title,
+                attributes: PixelStyle.textAttributes(size: PixelFont.speechSize, color: PixelStyle.textColor)
+            )
         }
         if let selected = settingsStore.appleReminderCalendarIdentifier,
            let index = popup.itemArray.firstIndex(where: { $0.representedObject as? String == selected }) {
             popup.selectItem(at: index)
         }
 
-        let alert = NSAlert()
-        alert.messageText = "同步 Apple 提醒事项"
-        alert.informativeText = "选择要读取的列表。同步只会导入或更新 Isaac 本地 Todo，不会改写 Apple“提醒事项”。"
-        alert.accessoryView = popup
-        alert.addButton(withTitle: "开始同步")
-        alert.addButton(withTitle: "取消")
-        guard alert.runModal() == .alertFirstButtonReturn else { return nil }
+        let result = PixelDialog.presentForm(
+            title: "同步 Apple 提醒事项",
+            message: "选择要读取的列表。同步只会导入或更新 Isaac 本地 Todo，不会改写 Apple“提醒事项”。",
+            content: popup,
+            initialFirstResponder: popup,
+            buttons: [
+                PixelDialog.Button(identifier: "sync", title: "开始同步", isDefault: true),
+                PixelDialog.Button(identifier: "cancel", title: "取消", isCancel: true),
+            ]
+        )
+        guard result == "sync" else { return nil }
         return .some(popup.selectedItem?.representedObject as? String)
-    }
-
-    private func presentAppleRemindersMessage(title: String, message: String) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.runModal()
     }
 
     @objc private func syncNotion() {
@@ -1207,7 +1200,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             }
             startNotionSync(token: token, dataSourceID: dataSourceID)
         } catch {
-            presentNotionMessage(title: "无法读取 Notion 设置", message: error.localizedDescription)
+            presentMessage(title: "无法读取 Notion 设置", message: error.localizedDescription)
         }
     }
 
@@ -1218,8 +1211,6 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         do {
             let existingToken = try notionCredentialStore.loadToken()
             guard let configuration = presentNotionConfiguration(hasSavedToken: existingToken != nil) else {
-                panel.orderFrontRegardless()
-                NSApp.deactivate()
                 return
             }
             let token: String
@@ -1238,37 +1229,28 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
                 startNotionSync(token: token, dataSourceID: dataSourceID)
             } else {
                 showSpeech("Notion 设置已保存到本机。")
-                panel.orderFrontRegardless()
-                NSApp.deactivate()
             }
         } catch {
-            presentNotionMessage(title: "无法保存 Notion 设置", message: error.localizedDescription)
-            panel.orderFrontRegardless()
-            NSApp.deactivate()
+            presentMessage(title: "无法保存 Notion 设置", message: error.localizedDescription)
         }
     }
 
     @objc private func disconnectNotion() {
         guard !isPlayMode, notionSyncTask == nil else { return }
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "断开 Notion？"
-        alert.informativeText = "这会从 macOS 钥匙串移除访问令牌并清除 data source ID。已经导入的本地 Todo 不会删除。"
-        alert.addButton(withTitle: "断开")
-        alert.addButton(withTitle: "取消")
-        guard alert.runModal() == .alertFirstButtonReturn else {
-            NSApp.deactivate()
-            return
-        }
+        let confirmed = PixelDialog.confirm(
+            title: "断开 Notion？",
+            message: "这会从 macOS 钥匙串移除访问令牌并清除 data source ID。已经导入的本地 Todo 不会删除。",
+            confirmTitle: "断开",
+            isDestructive: true
+        )
+        guard confirmed else { return }
         do {
             try notionCredentialStore.deleteToken()
             settingsStore.notionDataSourceIdentifier = nil
             showSpeech("Notion 已断开，本地 Todo 保留。")
         } catch {
-            presentNotionMessage(title: "无法断开 Notion", message: error.localizedDescription)
+            presentMessage(title: "无法断开 Notion", message: error.localizedDescription)
         }
-        panel.orderFrontRegardless()
-        NSApp.deactivate()
     }
 
     private func startNotionSync(token: String, dataSourceID: String) {
@@ -1301,7 +1283,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             } catch is CancellationError {
                 return
             } catch {
-                presentNotionMessage(title: "无法同步 Notion", message: error.localizedDescription)
+                presentMessage(title: "无法同步 Notion", message: error.localizedDescription)
             }
         }
     }
@@ -1332,28 +1314,23 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             accessory.addSubview(view)
         }
 
-        let alert = NSAlert()
-        alert.messageText = "Notion 只读连接"
-        alert.informativeText = "令牌只保存在 macOS 钥匙串，并仅在手动同步时发送到 api.notion.com。请先把目标 data source 共享给对应 integration。"
-        alert.accessoryView = accessory
-        alert.addButton(withTitle: "保存并同步")
-        alert.addButton(withTitle: "仅保存")
-        alert.addButton(withTitle: "取消")
-        let response = alert.runModal()
-        guard response != .alertThirdButtonReturn else { return nil }
+        let result = PixelDialog.presentForm(
+            title: "Notion 只读连接",
+            message: "令牌只保存在 macOS 钥匙串，并仅在手动同步时发送到 api.notion.com。请先把目标 data source 共享给对应 integration。",
+            content: accessory,
+            initialFirstResponder: tokenField,
+            buttons: [
+                PixelDialog.Button(identifier: "saveSync", title: "保存并同步", isDefault: true),
+                PixelDialog.Button(identifier: "save", title: "仅保存"),
+                PixelDialog.Button(identifier: "cancel", title: "取消", isCancel: true),
+            ]
+        )
+        guard result != "cancel" else { return nil }
         return (
             tokenField.stringValue,
             dataSourceField.stringValue,
-            response == .alertFirstButtonReturn
+            result == "saveSync"
         )
-    }
-
-    private func presentNotionMessage(title: String, message: String) {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.runModal()
     }
 
     @objc private func showAgentCenter() {
@@ -1398,17 +1375,13 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         _ = activateAgentAppearance(for: .judas)
         defer { restorePreferredAppearance() }
 
-        let titleField = NSTextField(frame: NSRect(x: 0, y: 0, width: 360, height: 26))
-        titleField.placeholderString = "例如：整理报告大纲"
-        let inputAlert = NSAlert()
-        inputAlert.messageText = "Judas 提议创建本地 Todo"
-        inputAlert.informativeText = "先输入要创建的任务。下一步仍会要求你明确确认，Judas 不会自行写入。"
-        inputAlert.accessoryView = titleField
-        inputAlert.addButton(withTitle: "继续")
-        inputAlert.addButton(withTitle: "取消")
-        NSApp.activate(ignoringOtherApps: true)
-        guard inputAlert.runModal() == .alertFirstButtonReturn else { return }
-        guard let title = TodoPolicy.normalizedTitle(titleField.stringValue) else {
+        guard let rawTitle = PixelDialog.prompt(
+            title: "Judas 提议创建本地 Todo",
+            message: "先输入要创建的任务。下一步仍会要求你明确确认，Judas 不会自行写入。",
+            placeholder: "例如：整理报告大纲",
+            confirmTitle: "继续"
+        ) else { return }
+        guard let title = TodoPolicy.normalizedTitle(rawTitle) else {
             showSpeech("Todo 标题不能为空。")
             return
         }
@@ -1429,13 +1402,12 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             )
             agentWindowController?.reload()
 
-            let confirmation = NSAlert()
-            confirmation.messageText = "允许 Judas 创建本地 Todo？"
-            confirmation.informativeText = "将仅写入 Isaac Pet 的本地 Todo：\n\n\(title)\n\n不会修改 Apple 提醒事项、Notion 或其他应用。"
-            confirmation.alertStyle = .warning
-            confirmation.addButton(withTitle: "创建 Todo")
-            confirmation.addButton(withTitle: "取消")
-            let approved = confirmation.runModal() == .alertFirstButtonReturn
+            let approved = PixelDialog.confirm(
+                title: "允许 Judas 创建本地 Todo？",
+                message: "将仅写入 Isaac Pet 的本地 Todo：\n\n\(title)\n\n不会修改 Apple 提醒事项、Notion 或其他应用。",
+                confirmTitle: "创建 Todo",
+                isDestructive: true
+            )
             if !approved {
                 try agentAuditStore.transition(
                     taskID: task.id,
@@ -1517,12 +1489,17 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
 
     private func presentFocusComposer() {
         guard !isPlayMode, activeAgentTask == nil else { return }
-        let targetField = NSTextField(string: "")
+        let targetField = PixelStyledField()
         targetField.placeholderString = "可选，例如：完成报告初稿"
         let durationPopup = NSPopUpButton()
+        durationPopup.font = PixelFont.speech
         for (title, seconds) in [("25 分钟", 1500.0), ("15 分钟", 900.0), ("45 分钟", 2700.0)] {
             durationPopup.addItem(withTitle: title)
             durationPopup.lastItem?.representedObject = seconds
+            durationPopup.lastItem?.attributedTitle = NSAttributedString(
+                string: title,
+                attributes: PixelStyle.textAttributes(size: PixelFont.speechSize, color: PixelStyle.textColor)
+            )
         }
         if ProcessInfo.processInfo.environment["ISAAC_FOCUS_DURATION_SECONDS"] != nil {
             durationPopup.addItem(withTitle: "测试时长")
@@ -1534,21 +1511,26 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
 
         let accessory = NSView(frame: NSRect(x: 0, y: 0, width: 430, height: 70))
         let targetLabel = NSTextField(labelWithString: "专注目标")
+        targetLabel.font = PixelFont.speech
         let durationLabel = NSTextField(labelWithString: "时长")
+        durationLabel.font = PixelFont.speech
         targetLabel.frame = NSRect(x: 0, y: 42, width: 72, height: 22)
         targetField.frame = NSRect(x: 80, y: 39, width: 350, height: 26)
         durationLabel.frame = NSRect(x: 0, y: 7, width: 72, height: 22)
         durationPopup.frame = NSRect(x: 80, y: 4, width: 160, height: 28)
         for view in [targetLabel, targetField, durationLabel, durationPopup] { accessory.addSubview(view) }
 
-        let alert = NSAlert()
-        alert.messageText = "Judas 专注计时"
-        alert.informativeText = "计时完全在本机运行。开始后可以在 Agent 中心查看剩余时间或随时取消。"
-        alert.accessoryView = accessory
-        alert.addButton(withTitle: "开始专注")
-        alert.addButton(withTitle: "取消")
-        NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        let result = PixelDialog.presentForm(
+            title: "Judas 专注计时",
+            message: "计时完全在本机运行。开始后可以在 Agent 中心查看剩余时间或随时取消。",
+            content: accessory,
+            initialFirstResponder: targetField,
+            buttons: [
+                PixelDialog.Button(identifier: "start", title: "开始专注", isDefault: true),
+                PixelDialog.Button(identifier: "cancel", title: "取消", isCancel: true),
+            ]
+        )
+        guard result == "start" else { return }
         let target = normalizedFocusTarget(targetField.stringValue)
         let duration = (durationPopup.selectedItem?.representedObject as? NSNumber)?.doubleValue
             ?? FocusSessionPolicy.defaultDuration
@@ -1771,41 +1753,29 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     }
 
     private func presentDailyPlan(_ plan: DailyPlan) {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Isaac 的今日计划"
-        alert.informativeText = plan.headline + "\n\n" + plan.steps.enumerated().map {
-            "\($0.offset + 1). \($0.element)"
-        }.joined(separator: "\n")
-        alert.addButton(withTitle: "知道了")
-        alert.runModal()
-        panel.orderFrontRegardless()
-        if agentWindowController?.window?.isVisible != true { NSApp.deactivate() }
+        presentMessage(
+            title: "Isaac 的今日计划",
+            message: plan.headline + "\n\n" + plan.steps.enumerated().map {
+                "\($0.offset + 1). \($0.element)"
+            }.joined(separator: "\n")
+        )
     }
 
     private func presentWellbeingPlan(_ plan: WellbeingPlan) {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Magdalene 的节奏检查"
-        alert.informativeText = plan.headline + "\n\n" + plan.suggestions.enumerated().map {
-            "\($0.offset + 1). \($0.element)"
-        }.joined(separator: "\n")
-        alert.addButton(withTitle: "知道了")
-        alert.runModal()
-        panel.orderFrontRegardless()
-        if agentWindowController?.window?.isVisible != true { NSApp.deactivate() }
+        presentMessage(
+            title: "Magdalene 的节奏检查",
+            message: plan.headline + "\n\n" + plan.suggestions.enumerated().map {
+                "\($0.offset + 1). \($0.element)"
+            }.joined(separator: "\n")
+        )
     }
 
     private func presentFocusCompletion(target: String?) {
-        NSApp.activate(ignoringOtherApps: true)
-        let alert = NSAlert()
-        alert.messageText = "Judas：专注完成"
         let subject = target.map { "\n\n目标：\($0)" } ?? ""
-        alert.informativeText = "起来休息一下，再决定下一步。\(subject)\n系统通知会在允许时触发，桌面气泡始终有效。"
-        alert.addButton(withTitle: "知道了")
-        alert.runModal()
-        panel.orderFrontRegardless()
-        if agentWindowController?.window?.isVisible != true { NSApp.deactivate() }
+        presentMessage(
+            title: "Judas：专注完成",
+            message: "起来休息一下，再决定下一步。\(subject)\n系统通知会在允许时触发，桌面气泡始终有效。"
+        )
     }
 
     @objc private func changeScale(_ sender: NSMenuItem) {
@@ -1831,11 +1801,10 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
                 try SMAppService.mainApp.register()
             }
         } catch {
-            NSApp.activate(ignoringOtherApps: true)
-            let alert = NSAlert(error: error)
-            alert.messageText = "无法更改登录启动设置"
-            alert.informativeText = "请先把 Isaac Pet 安装到“应用程序”文件夹，再重试。\n\n\(error.localizedDescription)"
-            alert.runModal()
+            presentMessage(
+                title: "无法更改登录启动设置",
+                message: "请先把 Isaac Pet 安装到“应用程序”文件夹，再重试。\n\n\(error.localizedDescription)"
+            )
         }
     }
 

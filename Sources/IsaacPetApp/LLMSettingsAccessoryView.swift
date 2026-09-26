@@ -27,8 +27,7 @@ final class LLMSettingsAccessoryView: NSView {
         formatPopup.target = self
         formatPopup.action = #selector(formatChanged)
 
-        let importButton = NSButton(title: "导入配置文件…", target: self, action: #selector(importConfigFile))
-        importButton.bezelStyle = .rounded
+        let importButton = PixelButton(title: "导入配置文件…", target: self, action: #selector(importConfigFile))
         importButton.frame = NSRect(x: 280, y: 118, width: 190, height: 26)
 
         let baseURLLabel = NSTextField(labelWithString: "Base URL")
@@ -44,6 +43,19 @@ final class LLMSettingsAccessoryView: NSView {
         modelLabel.frame = NSRect(x: 0, y: 14, width: 64, height: 22)
         modelField.frame = NSRect(x: 70, y: 10, width: 400, height: 24)
         modelField.placeholderString = "例如 gpt-5-mini、claude-sonnet-4-5"
+
+        formatPopup.font = PixelFont.speech
+        for field in [baseURLField, keyField, modelField] {
+            field.font = PixelFont.speech
+            field.backgroundColor = PixelStyle.fillColor
+            field.drawsBackground = true
+            field.bezelStyle = .squareBezel
+            field.focusRingType = .none
+        }
+        for label in [formatLabel, baseURLLabel, keyLabel, modelLabel] {
+            label.font = PixelFont.speech
+            label.textColor = PixelStyle.textColor
+        }
 
         for view in [
             formatLabel, formatPopup, importButton,

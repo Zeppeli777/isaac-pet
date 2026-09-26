@@ -283,13 +283,12 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
 
     @objc private func deleteSelectedTodo() {
         guard let item = selectedItem else { return }
-        let alert = NSAlert()
-        alert.messageText = "删除这个 Todo？"
-        alert.informativeText = item.title
-        alert.addButton(withTitle: "删除")
-        alert.addButton(withTitle: "取消")
-        alert.alertStyle = .warning
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard PixelDialog.confirm(
+            title: "删除这个 Todo？",
+            message: item.title,
+            confirmTitle: "删除",
+            isDestructive: true
+        ) else { return }
         do {
             try store.remove(id: item.id)
             reload()
@@ -300,10 +299,7 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
     }
 
     private func showError(message: String) {
-        let alert = NSAlert()
-        alert.messageText = "无法更新 Todo"
-        alert.informativeText = message
-        alert.runModal()
+        PixelDialog.presentMessage(title: "无法更新 Todo", message: message)
     }
 }
 

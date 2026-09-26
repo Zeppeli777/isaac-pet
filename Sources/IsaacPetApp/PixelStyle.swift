@@ -85,3 +85,29 @@ enum PixelStyle {
         return inner
     }
 }
+
+/// A thin stepped pixel frame for embedding scroll views and form groups.
+@MainActor
+final class PixelFrameBoxView: NSView {
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        PixelStyle.drawFrame(
+            in: bounds,
+            borderWidth: 3,
+            radius: 5,
+            fill: .clear
+        )
+    }
+}
+
+/// Table row view with game-palette selection highlight (brick red instead of
+/// the system accent blue).
+@MainActor
+final class PixelTableRowView: NSTableRowView {
+    override func drawSelection(in dirtyRect: NSRect) {
+        guard selectionHighlightStyle == .regular else { return }
+        PixelStyle.accentColor.withAlphaComponent(0.22).setFill()
+        bounds.fill()
+    }
+}
