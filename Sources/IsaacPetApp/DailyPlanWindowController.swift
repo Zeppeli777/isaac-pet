@@ -11,16 +11,11 @@ final class DailyPlanWindowController: NSWindowController, NSWindowDelegate {
     init(itemsProvider: @escaping () -> [TodoItem]) {
         self.itemsProvider = itemsProvider
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 390),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
+        let window = PixelWindow(
+            size: NSSize(width: 560, height: 390),
+            title: "Isaac 今日计划",
+            minSize: NSSize(width: 460, height: 300)
         )
-        window.title = "Isaac 今日计划"
-        window.minSize = NSSize(width: 460, height: 300)
-        window.isReleasedWhenClosed = false
-        window.collectionBehavior = [.moveToActiveSpace]
         super.init(window: window)
         window.delegate = self
         configureContent()
@@ -53,25 +48,21 @@ final class DailyPlanWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func configureContent() {
-        guard let contentView = window?.contentView else { return }
+        guard let contentView = (window as? PixelWindow)?.contentContainer else { return }
 
-        let heading = NSTextField(labelWithString: "TODAY'S PLAN")
-        heading.font = NSFont(name: "Menlo-Bold", size: 20)
-            ?? NSFont.monospacedSystemFont(ofSize: 20, weight: .bold)
-        heading.textColor = NSColor(calibratedRed: 0.76, green: 0.26, blue: 0.20, alpha: 1)
-
-        headlineLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        headlineLabel.font = PixelFont.speech
+        headlineLabel.textColor = PixelStyle.textColor
         headlineLabel.textColor = .labelColor
         headlineLabel.maximumNumberOfLines = 0
 
-        generatedLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        generatedLabel.textColor = .secondaryLabelColor
+        generatedLabel.font = PixelFont.speech
+        generatedLabel.textColor = PixelStyle.disabledTextColor
 
         planTextView.isEditable = false
         planTextView.isSelectable = true
         planTextView.isRichText = false
         planTextView.drawsBackground = false
-        planTextView.font = .systemFont(ofSize: 14, weight: .medium)
+        planTextView.font = PixelFont.speech
         planTextView.textColor = .labelColor
         planTextView.textContainerInset = NSSize(width: 12, height: 12)
         planTextView.autoresizingMask = [.width]
@@ -82,35 +73,40 @@ final class DailyPlanWindowController: NSWindowController, NSWindowDelegate {
         let scrollView = NSScrollView()
         scrollView.documentView = planTextView
         scrollView.hasVerticalScroller = true
-        scrollView.borderType = .bezelBorder
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        let planFrame = PixelFrameBoxView()
+        planFrame.addSubview(scrollView)
 
-        let refreshButton = NSButton(title: "刷新计划", target: self, action: #selector(refreshPlan))
-        refreshButton.bezelStyle = .regularSquare
-        refreshButton.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
+        let refreshButton = PixelButton(title: "刷新计划", target: self, action: #selector(refreshPlan))
 
-        for view in [heading, headlineLabel, generatedLabel, scrollView, refreshButton] {
+        for view in [headlineLabel, generatedLabel, planFrame, refreshButton] {
             view.translatesAutoresizingMaskIntoConstraints = false
             contentView.addSubview(view)
         }
 
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            heading.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 18),
-            heading.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            refreshButton.centerYAnchor.constraint(equalTo: heading.centerYAnchor),
-            refreshButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
-
-            headlineLabel.topAnchor.constraint(equalTo: heading.bottomAnchor, constant: 12),
-            headlineLabel.leadingAnchor.constraint(equalTo: heading.leadingAnchor),
-            headlineLabel.trailingAnchor.constraint(equalTo: refreshButton.trailingAnchor),
+            headlineLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 2),
+            headlineLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            headlineLabel.trailingAnchor.constraint(lessThanOrEqualTo: refreshButton.leadingAnchor, constant: -12),
 
             generatedLabel.topAnchor.constraint(equalTo: headlineLabel.bottomAnchor, constant: 6),
-            generatedLabel.leadingAnchor.constraint(equalTo: heading.leadingAnchor),
-            generatedLabel.trailingAnchor.constraint(equalTo: refreshButton.trailingAnchor),
+            generatedLabel.leadingAnchor.constraint(equalTo: headlineLabel.leadingAnchor),
+            generatedLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
 
-            scrollView.topAnchor.constraint(equalTo: generatedLabel.bottomAnchor, constant: 12),
-            scrollView.leadingAnchor.constraint(equalTo: heading.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: refreshButton.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
+            planFrame.topAnchor.constraint(equalTo: generatedLabel.bottomAnchor, constant: 10),
+            planFrame.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            planFrame.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            planFrame.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+
+            scrollView.leadingAnchor.constraint(equalTo: planFrame.leadingAnchor, constant: 3),
+            scrollView.trailingAnchor.constraint(equalTo: planFrame.trailingAnchor, constant: -3),
+            scrollView.topAnchor.constraint(equalTo: planFrame.topAnchor, constant: 3),
+            scrollView.bottomAnchor.constraint(equalTo: planFrame.bottomAnchor, constant: -3),
+
+            refreshButton.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 2),
+            refreshButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
         ])
     }
 

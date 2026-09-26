@@ -7,27 +7,22 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
     private let onItemsChanged: () -> Void
     private let tableView = NSTableView()
     private let summaryLabel = NSTextField(labelWithString: "")
-    private let titleField = NSTextField()
+    private let titleField = PixelStyledField()
     private let reminderCheckbox = NSButton(checkboxWithTitle: "定时提醒", target: nil, action: nil)
     private let datePicker = NSDatePicker()
-    private let completeButton = NSButton(title: "完成", target: nil, action: nil)
-    private let deleteButton = NSButton(title: "删除", target: nil, action: nil)
+    private let completeButton = PixelButton(title: "完成", target: nil, action: nil)
+    private let deleteButton = PixelButton(title: "删除", target: nil, action: nil)
     private var displayedItems: [TodoItem] = []
 
     init(store: TodoStore, onItemsChanged: @escaping () -> Void) {
         self.store = store
         self.onItemsChanged = onItemsChanged
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 600, height: 430),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
+        let window = PixelWindow(
+            size: NSSize(width: 600, height: 430),
+            title: "Isaac Todo",
+            minSize: NSSize(width: 520, height: 360)
         )
-        window.title = "Isaac Todo"
-        window.minSize = NSSize(width: 520, height: 360)
-        window.isReleasedWhenClosed = false
-        window.collectionBehavior = [.moveToActiveSpace]
         super.init(window: window)
         window.delegate = self
         configureContent()
@@ -71,7 +66,7 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
         case "status":
             field.stringValue = item.isCompleted ? "✓" : "□"
             field.alignment = .center
-            field.textColor = item.isCompleted ? .systemGreen : .secondaryLabelColor
+            field.textColor = item.isCompleted ? .systemGreen : PixelStyle.disabledTextColor
         case "title":
             field.attributedStringValue = titleText(for: item)
             field.alignment = .left
@@ -91,12 +86,22 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
             if !item.isCompleted, let dueAt = item.dueAt, dueAt <= Date() {
                 field.textColor = .systemRed
             } else {
-                field.textColor = .secondaryLabelColor
+                field.textColor = PixelStyle.disabledTextColor
             }
         default:
             break
         }
         return field
+    }
+
+    func tableView(_ tableView: NSTableView, didAdd rowView: NSTableRowView, forRow row: Int) {
+        rowView.backgroundColor = row.isMultiple(of: 2)
+            ? PixelStyle.fillColor
+            : PixelStyle.shadowColor.withAlphaComponent(0.35)
+    }
+
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        PixelTableRowView()
     }
 
     func tableViewSelectionDidChange(_ notification: Notification) {
@@ -108,15 +113,10 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
     }
 
     private func configureContent() {
-        guard let contentView = window?.contentView else { return }
+        guard let contentView = (window as? PixelWindow)?.contentContainer else { return }
 
-        let heading = NSTextField(labelWithString: "ISAAC TODO")
-        heading.font = NSFont(name: "Menlo-Bold", size: 20)
-            ?? NSFont.monospacedSystemFont(ofSize: 20, weight: .bold)
-        heading.textColor = NSColor(calibratedRed: 0.76, green: 0.26, blue: 0.20, alpha: 1)
-
-        summaryLabel.font = .monospacedSystemFont(ofSize: 12, weight: .medium)
-        summaryLabel.textColor = .secondaryLabelColor
+        summaryLabel.font = PixelFont.speech
+        summaryLabel.textColor = PixelStyle.disabledTextColor
 
         let statusColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("status"))
         statusColumn.title = ""
@@ -131,13 +131,15 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
         dueColumn.title = "提醒时间"
         dueColumn.width = 180
         dueColumn.minWidth = 150
-        tableView.addTableColumn(statusColumn)
-        tableView.addTableColumn(titleColumn)
-        tableView.addTableColumn(dueColumn)
+        for column in [statusColumn, titleColumn, dueColumn] {
+            column.headerCell.font = PixelFont.speech
+            tableView.addTableColumn(column)
+        }
         tableView.dataSource = self
         tableView.delegate = self
         tableView.rowHeight = 28
-        tableView.usesAlternatingRowBackgroundColors = true
+        tableView.usesAlternatingRowBackgroundColors = false
+        tableView.backgroundColor = .clear
         tableView.allowsEmptySelection = true
         tableView.doubleAction = #selector(toggleSelectedTodo)
         tableView.target = self
@@ -145,30 +147,33 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
         let scrollView = NSScrollView()
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
-        scrollView.borderType = .bezelBorder
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        let tableFrame = PixelFrameBoxView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        tableFrame.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(tableFrame)
+        tableFrame.addSubview(scrollView)
 
         titleField.placeholderString = "添加一个 Todo…"
-        titleField.font = .systemFont(ofSize: 13)
         titleField.target = self
         titleField.action = #selector(addTodo)
 
         reminderCheckbox.target = self
         reminderCheckbox.action = #selector(toggleReminderInput)
         reminderCheckbox.state = .off
+        reminderCheckbox.font = PixelFont.speech
 
         datePicker.datePickerStyle = .textFieldAndStepper
         datePicker.datePickerElements = [.yearMonthDay, .hourMinute]
         datePicker.dateValue = Date().addingTimeInterval(3600)
         datePicker.isEnabled = false
 
-        let addButton = NSButton(title: "添加", target: self, action: #selector(addTodo))
-        configurePixelButton(addButton)
+        let addButton = PixelButton(title: "添加", target: self, action: #selector(addTodo))
         completeButton.target = self
         completeButton.action = #selector(toggleSelectedTodo)
-        configurePixelButton(completeButton)
         deleteButton.target = self
         deleteButton.action = #selector(deleteSelectedTodo)
-        configurePixelButton(deleteButton)
 
         let composer = NSStackView(views: [titleField, reminderCheckbox, datePicker, addButton])
         composer.orientation = .horizontal
@@ -182,51 +187,49 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
         actionButtons.alignment = .centerY
         actionButtons.spacing = 8
 
-        for view in [heading, summaryLabel, scrollView, composer, actionButtons] {
+        for view in [summaryLabel, composer, actionButtons] {
             view.translatesAutoresizingMaskIntoConstraints = false
             contentView.addSubview(view)
         }
 
         NSLayoutConstraint.activate([
-            heading.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 18),
-            heading.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            summaryLabel.centerYAnchor.constraint(equalTo: heading.centerYAnchor),
-            summaryLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            summaryLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 2),
+            summaryLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
 
-            scrollView.topAnchor.constraint(equalTo: heading.bottomAnchor, constant: 12),
-            scrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
-            scrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            tableFrame.topAnchor.constraint(equalTo: summaryLabel.bottomAnchor, constant: 8),
+            tableFrame.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            tableFrame.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
 
-            composer.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 12),
-            composer.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
-            composer.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: tableFrame.leadingAnchor, constant: 3),
+            scrollView.trailingAnchor.constraint(equalTo: tableFrame.trailingAnchor, constant: -3),
+            scrollView.topAnchor.constraint(equalTo: tableFrame.topAnchor, constant: 3),
+            scrollView.bottomAnchor.constraint(equalTo: tableFrame.bottomAnchor, constant: -3),
+
+            composer.topAnchor.constraint(equalTo: tableFrame.bottomAnchor, constant: 12),
+            composer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            composer.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
 
             actionButtons.topAnchor.constraint(equalTo: composer.bottomAnchor, constant: 10),
-            actionButtons.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
-            actionButtons.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16),
+            actionButtons.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            actionButtons.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -4),
         ])
     }
 
     private func makeCell(identifier: NSUserInterfaceItemIdentifier) -> NSTextField {
         let field = NSTextField(labelWithString: "")
         field.identifier = identifier
-        field.font = .systemFont(ofSize: 13)
+        field.font = PixelFont.speech
         field.lineBreakMode = .byTruncatingTail
         return field
     }
 
     private func titleText(for item: TodoItem) -> NSAttributedString {
         var attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 13),
-            .foregroundColor: item.isCompleted ? NSColor.secondaryLabelColor : NSColor.labelColor,
+            .font: PixelFont.speech,
+            .foregroundColor: item.isCompleted ? PixelStyle.disabledTextColor : PixelStyle.textColor,
         ]
         if item.isCompleted { attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
         return NSAttributedString(string: item.title, attributes: attributes)
-    }
-
-    private func configurePixelButton(_ button: NSButton) {
-        button.bezelStyle = .regularSquare
-        button.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
     }
 
     private func updateSelectionButtons() {
@@ -279,13 +282,12 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
 
     @objc private func deleteSelectedTodo() {
         guard let item = selectedItem else { return }
-        let alert = NSAlert()
-        alert.messageText = "删除这个 Todo？"
-        alert.informativeText = item.title
-        alert.addButton(withTitle: "删除")
-        alert.addButton(withTitle: "取消")
-        alert.alertStyle = .warning
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard PixelDialog.confirm(
+            title: "删除这个 Todo？",
+            message: item.title,
+            confirmTitle: "删除",
+            isDestructive: true
+        ) else { return }
         do {
             try store.remove(id: item.id)
             reload()
@@ -296,10 +298,7 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
     }
 
     private func showError(message: String) {
-        let alert = NSAlert()
-        alert.messageText = "无法更新 Todo"
-        alert.informativeText = message
-        alert.runModal()
+        PixelDialog.presentMessage(title: "无法更新 Todo", message: message)
     }
 }
 
