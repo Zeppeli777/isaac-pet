@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Pillow (asset pipeline)
+        run: python3 -m pip install --upgrade pillow
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build app (regenerate + validate assets)
+        run: ISAAC_REGENERATE_ASSETS=1 ./scripts/build_app.sh
+
+      - name: Core self-checks
+        run: swift run -c release IsaacPetCoreChecks
+
+      - name: Verify bundle
+        run: ./scripts/verify_app.sh
+
+      - name: Package app for download
+        run: |
+          cd dist
+          ditto -c -k --sequesterRsrc --keepParent "Isaac Pet.app" "IsaacPet-ci.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IsaacPet-${{ github.sha }}
+          path: dist/IsaacPet-ci.zip
+          retention-days: 14
