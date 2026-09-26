@@ -318,6 +318,24 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
                 }
             }
         }
+        for item in menu.items {
+            applyPixelTitle(item)
+            for subItem in item.submenu?.items ?? [] {
+                applyPixelTitle(subItem)
+            }
+        }
+    }
+
+    // Attributed menu titles with the pixel font; disabled items need an explicit
+    // gray variant because attributed titles do not gray out automatically.
+    private func applyPixelTitle(_ item: NSMenuItem) {
+        item.attributedTitle = NSAttributedString(
+            string: item.title,
+            attributes: PixelStyle.textAttributes(
+                size: PixelFont.speechSize,
+                color: item.isEnabled ? PixelStyle.textColor : PixelStyle.disabledTextColor
+            )
+        )
     }
 
     func menuDidClose(_ menu: NSMenu) {
