@@ -10,21 +10,7 @@ enum PetSpeechLibrary {
         "今天想做什么？",
     ]
 
-    private static let expressions = [
-        ":)",
-        "♥",
-        "...",
-        "!",
-        "T_T",
-        "o_o",
-        ":P",
-    ]
-
     static func randomPhrase() -> String {
         phrases.randomElement() ?? "嗨！ :)"
-    }
-
-    static func randomExpression() -> String {
-        expressions.randomElement() ?? ":)"
     }
 }

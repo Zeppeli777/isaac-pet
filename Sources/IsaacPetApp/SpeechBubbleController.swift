@@ -109,7 +109,7 @@ final class SpeechBubbleController: NSObject {
 }
 
 @MainActor
-private final class SpeechBubbleView: NSView {
+final class SpeechBubbleView: NSView {
     enum TailEdge {
         case top
         case bottom
@@ -119,12 +119,21 @@ private final class SpeechBubbleView: NSView {
         static let tailHeight: CGFloat = 14
         static let outerInset: CGFloat = 3
         static let border: CGFloat = 4
+        static let cornerRadius: CGFloat = 7
         static let textHorizontalInset: CGFloat = 13
         static let textVerticalInset: CGFloat = 10
         static let maximumTextWidth: CGFloat = 236
         static let minimumBodyWidth: CGFloat = 88
         static let minimumBodyHeight: CGFloat = 43
+        static let bottomShadow: CGFloat = 2
     }
+
+    // Palette sampled from the in-game message box reference
+    // (Assets/Source/Emotes/reference-message-box.png).
+    private static let borderColor = NSColor(calibratedRed: 0.70, green: 0.68, blue: 0.66, alpha: 1)
+    private static let fillColor = NSColor(calibratedRed: 0.93, green: 0.91, blue: 0.90, alpha: 1)
+    private static let shadowColor = NSColor(calibratedRed: 0.82, green: 0.80, blue: 0.79, alpha: 1)
+    private static let textColor = NSColor(calibratedRed: 0.24, green: 0.23, blue: 0.22, alpha: 1)
 
     var message = "" {
         didSet { needsDisplay = true }
@@ -138,20 +147,17 @@ private final class SpeechBubbleView: NSView {
 
     override var isOpaque: Bool { false }
 
-    private static let font = NSFont(name: "Menlo-Bold", size: 15)
-        ?? NSFont.monospacedSystemFont(ofSize: 15, weight: .bold)
-
     private static let paragraphStyle: NSParagraphStyle = {
         let style = NSMutableParagraphStyle()
         style.alignment = .center
-        style.lineBreakMode = .byWordWrapping
+        style.lineBreakMode = .byCharWrapping
         style.lineSpacing = 2
         return style
     }()
 
     private static let textAttributes: [NSAttributedString.Key: Any] = [
-        .font: font,
-        .foregroundColor: NSColor(calibratedWhite: 0.10, alpha: 1),
+        .font: PixelFont.speech,
+        .foregroundColor: textColor,
         .paragraphStyle: paragraphStyle,
     ]
 
@@ -206,47 +212,105 @@ private final class SpeechBubbleView: NSView {
     }
 
     private func drawPixelBody(in rect: NSRect) {
-        let corner: CGFloat = 6
-        let outerPath = NSBezierPath()
-        outerPath.move(to: NSPoint(x: rect.minX + corner, y: rect.minY))
-        outerPath.line(to: NSPoint(x: rect.maxX - corner, y: rect.minY))
-        outerPath.line(to: NSPoint(x: rect.maxX, y: rect.minY + corner))
-        outerPath.line(to: NSPoint(x: rect.maxX, y: rect.maxY - corner))
-        outerPath.line(to: NSPoint(x: rect.maxX - corner, y: rect.maxY))
-        outerPath.line(to: NSPoint(x: rect.minX + corner, y: rect.maxY))
-        outerPath.line(to: NSPoint(x: rect.minX, y: rect.maxY - corner))
-        outerPath.line(to: NSPoint(x: rect.minX, y: rect.minY + corner))
-        outerPath.close()
-        NSColor(calibratedWhite: 0.08, alpha: 1).setFill()
-        outerPath.fill()
+        Self.borderColor.setFill()
+        pixelRoundedPath(rect, radius: Layout.cornerRadius).fill()
 
         let inner = rect.insetBy(dx: Layout.border, dy: Layout.border)
-        NSColor(calibratedRed: 1.0, green: 0.96, blue: 0.82, alpha: 1).setFill()
-        NSBezierPath(rect: inner).fill()
+        let innerPath = pixelRoundedPath(inner, radius: Layout.cornerRadius - Layout.border)
+        Self.fillColor.setFill()
+        innerPath.fill()
 
-        NSColor(calibratedRed: 0.76, green: 0.26, blue: 0.20, alpha: 1).setFill()
-        NSBezierPath(rect: NSRect(x: inner.minX, y: inner.minY, width: inner.width, height: 3)).fill()
+        // The reference box darkens along its visually bottom inner edge, giving the
+        // paper a lip; speckles keep the subtle grain of the game's message paper.
+        if let context = NSGraphicsContext.current {
+            context.saveGraphicsState()
+            innerPath.addClip()
+            Self.shadowColor.setFill()
+            NSBezierPath(rect: NSRect(
+                x: inner.minX,
+                y: inner.minY,
+                width: inner.width,
+                height: Layout.bottomShadow
+            )).fill()
+            drawPaperSpeckles(in: inner)
+            context.restoreGraphicsState()
+        }
+    }
+
+    private func drawPaperSpeckles(in innerRect: NSRect) {
+        guard innerRect.width > 60, innerRect.height > 36 else { return }
+        Self.shadowColor.setFill()
+        let spots: [NSPoint] = [
+            NSPoint(x: 0.16, y: 0.32),
+            NSPoint(x: 0.71, y: 0.24),
+            NSPoint(x: 0.86, y: 0.62),
+            NSPoint(x: 0.31, y: 0.70),
+        ]
+        for spot in spots {
+            let x = (innerRect.minX + innerRect.width * spot.x).rounded(.down)
+            let y = (innerRect.minY + innerRect.height * spot.y).rounded(.down)
+            NSBezierPath(rect: NSRect(x: x, y: y, width: 2, height: 2)).fill()
+        }
+    }
+
+    /// A quarter-circle quantized onto the pixel grid, built from per-row rects so the
+    /// corners step like the game's message box instead of antialiasing into a curve.
+    private func pixelRoundedPath(_ rect: NSRect, radius: CGFloat) -> NSBezierPath {
+        let path = NSBezierPath()
+        let left = Int(rect.minX.rounded(.down))
+        let right = Int(rect.maxX.rounded(.up))
+        let bottom = Int(rect.minY.rounded(.down))
+        let top = Int(rect.maxY.rounded(.up))
+        let radiusInt = Int(radius)
+        for y in bottom..<top {
+            let depth = min(y - bottom, top - 1 - y)
+            let inset: Int
+            if depth >= radiusInt {
+                inset = 0
+            } else {
+                let offset = CGFloat(radiusInt - depth) - 0.5
+                let span = sqrt(CGFloat(radiusInt * radiusInt) - offset * offset).rounded(.down)
+                inset = radiusInt - Int(span)
+            }
+            path.append(NSBezierPath(rect: NSRect(
+                x: CGFloat(left + inset),
+                y: CGFloat(y),
+                width: CGFloat(right - left - inset * 2),
+                height: 1
+            )))
+        }
+        return path
     }
 
     private func drawTail(from bodyRect: NSRect) {
-        let bodyEdgeY = tailEdge == .bottom ? bodyRect.minY : bodyRect.maxY
-        let tipY = tailEdge == .bottom ? bounds.minY + 1 : bounds.maxY - 1
-        let outer = NSBezierPath()
-        outer.move(to: NSPoint(x: tailX - 13, y: bodyEdgeY))
-        outer.line(to: NSPoint(x: tailX + 10, y: bodyEdgeY))
-        outer.line(to: NSPoint(x: tailX + 3, y: tipY))
-        outer.line(to: NSPoint(x: tailX - 4, y: tipY))
-        outer.close()
-        NSColor(calibratedWhite: 0.08, alpha: 1).setFill()
-        outer.fill()
-
-        let innerTipY = tailEdge == .bottom ? tipY + 5 : tipY - 5
-        let inner = NSBezierPath()
-        inner.move(to: NSPoint(x: tailX - 7, y: bodyEdgeY))
-        inner.line(to: NSPoint(x: tailX + 4, y: bodyEdgeY))
-        inner.line(to: NSPoint(x: tailX, y: innerTipY))
-        inner.close()
-        NSColor(calibratedRed: 1.0, green: 0.96, blue: 0.82, alpha: 1).setFill()
-        inner.fill()
+        let downward = tailEdge == .bottom
+        let direction: CGFloat = downward ? -1 : 1
+        // Staircase tail: (step height, outer width, inner width, inner height). The
+        // inner fill hugs the body side and leaves a border cap at the tip.
+        let steps: [(height: CGFloat, outer: CGFloat, inner: CGFloat, innerHeight: CGFloat)] = [
+            (5, 26, 20, 5),
+            (5, 18, 12, 5),
+            (4, 10, 4, 1),
+        ]
+        var y = downward ? bodyRect.minY : bodyRect.maxY
+        for step in steps {
+            let outerY = downward ? y - step.height : y
+            let innerY = downward ? y - step.innerHeight : y
+            Self.borderColor.setFill()
+            NSBezierPath(rect: NSRect(
+                x: tailX - step.outer / 2,
+                y: outerY,
+                width: step.outer,
+                height: step.height
+            )).fill()
+            Self.fillColor.setFill()
+            NSBezierPath(rect: NSRect(
+                x: tailX - step.inner / 2,
+                y: innerY,
+                width: step.inner,
+                height: step.innerHeight
+            )).fill()
+            y += direction * step.height
+        }
     }
 }

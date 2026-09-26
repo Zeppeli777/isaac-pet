@@ -688,5 +688,34 @@
     "round": true,
     "palette": true,
     "contact_sheet": "qa/tear-contact-sheet.png"
+  },
+  "emotes": {
+    "sad": {
+      "path": "Resources/EmoteSad.png",
+      "size": [
+        48,
+        51
+      ],
+      "components": 1,
+      "palette": true
+    },
+    "shocked": {
+      "path": "Resources/EmoteShocked.png",
+      "size": [
+        48,
+        51
+      ],
+      "components": 1,
+      "palette": true
+    },
+    "happy": {
+      "path": "Resources/EmoteHappy.png",
+      "size": [
+        48,
+        51
+      ],
+      "components": 1,
+      "palette": true
+    }
   }
 }

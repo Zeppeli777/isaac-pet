@@ -33,6 +33,8 @@ final class SpriteAtlas {
         case invalidImage
         case missingTearResource
         case invalidTearImage
+        case missingEmoteResource(EmoteID)
+        case invalidEmoteImage(EmoteID)
         case missingShootingResource
         case invalidShootingImage
         case invalidShootingDimensions(Int, Int)
@@ -50,6 +52,8 @@ final class SpriteAtlas {
             case .invalidImage: "无法解码 Isaac 动画图集。"
             case .missingTearResource: "找不到 IsaacTear.png。"
             case .invalidTearImage: "无法解码 Isaac 泪弹素材。"
+            case let .missingEmoteResource(emote): "找不到 \(emote.resourceName).png。"
+            case let .invalidEmoteImage(emote): "无法解码表情气泡素材 \(emote.resourceName)。"
             case .missingShootingResource: "找不到 shooting-atlas.webp。"
             case .invalidShootingImage: "无法解码 Isaac 射击姿态。"
             case let .invalidShootingDimensions(width, height): "射击姿态尺寸错误：\(width)×\(height)。"
@@ -77,6 +81,7 @@ final class SpriteAtlas {
     private var shootingCache: [Int: SpriteFrame] = [:]
     private var verticalWalkingCache: [Cell: SpriteFrame] = [:]
     private var cachedTear: SpriteFrame?
+    private var emoteCache: [EmoteID: SpriteFrame] = [:]
 
     init(
         bundle: Bundle = .main,
@@ -209,6 +214,20 @@ final class SpriteAtlas {
         }
         let frame = SpriteFrame(cgImage: cgImage)
         cachedTear = frame
+        return frame
+    }
+
+    func emoteFrame(_ emote: EmoteID) throws -> SpriteFrame {
+        if let cached = emoteCache[emote] { return cached }
+        guard let url = bundle.url(forResource: emote.resourceName, withExtension: "png") else {
+            throw AtlasError.missingEmoteResource(emote)
+        }
+        guard let image = NSImage(contentsOf: url),
+              let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            throw AtlasError.invalidEmoteImage(emote)
+        }
+        let frame = SpriteFrame(cgImage: cgImage)
+        emoteCache[emote] = frame
         return frame
     }
 
