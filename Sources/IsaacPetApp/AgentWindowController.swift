@@ -19,9 +19,9 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
     private let activeStatusLabel = NSTextField(labelWithString: "")
     private let tableView = NSTableView()
     private let detailLabel = NSTextField(wrappingLabelWithString: "")
-    private let runButton = NSButton(title: "生成今日计划", target: nil, action: nil)
-    private let proposalButton = NSButton(title: "创建 Todo（需确认）", target: nil, action: nil)
-    private let cancelButton = NSButton(title: "取消任务", target: nil, action: nil)
+    private let runButton = PixelButton(title: "生成今日计划", target: nil, action: nil)
+    private let proposalButton = PixelButton(title: "创建 Todo（需确认）", target: nil, action: nil)
+    private let cancelButton = PixelButton(title: "取消任务", target: nil, action: nil)
     private var rows: [Row] = []
     private var lastActiveStatusText = ""
 
@@ -36,16 +36,11 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
         self.onRequestTodoProposal = onRequestTodoProposal
         self.onCancelTask = onCancelTask
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 680, height: 500),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
+        let window = PixelWindow(
+            size: NSSize(width: 680, height: 500),
+            title: "Isaac Agents",
+            minSize: NSSize(width: 600, height: 430)
         )
-        window.title = "Isaac Agents"
-        window.minSize = NSSize(width: 600, height: 430)
-        window.isReleasedWhenClosed = false
-        window.collectionBehavior = [.moveToActiveSpace]
         super.init(window: window)
         window.delegate = self
         configureContent()
@@ -126,6 +121,16 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
         return field
     }
 
+    func tableView(_ tableView: NSTableView, didAdd rowView: NSTableRowView, forRow row: Int) {
+        rowView.backgroundColor = row.isMultiple(of: 2)
+            ? PixelStyle.fillColor
+            : PixelStyle.shadowColor.withAlphaComponent(0.35)
+    }
+
+    func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
+        PixelTableRowView()
+    }
+
     func tableViewSelectionDidChange(_ notification: Notification) {
         updateSelection()
     }
@@ -144,7 +149,12 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
         for profile in AgentCatalog.profiles {
             rolePopup.addItem(withTitle: profile.displayName)
             rolePopup.lastItem?.representedObject = profile.id.rawValue
+            rolePopup.lastItem?.attributedTitle = NSAttributedString(
+                string: profile.displayName,
+                attributes: PixelStyle.textAttributes(size: PixelFont.speechSize, color: PixelStyle.textColor)
+            )
         }
+        rolePopup.font = PixelFont.speech
         rolePopup.target = self
         rolePopup.action = #selector(roleChanged)
 
@@ -154,10 +164,10 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
         rolePortraitView.layer?.magnificationFilter = .nearest
         rolePortraitView.layer?.minificationFilter = .nearest
 
-        specialtyLabel.font = .systemFont(ofSize: 13, weight: .medium)
-        capabilityLabel.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        capabilityLabel.textColor = .secondaryLabelColor
-        activeStatusLabel.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
+        specialtyLabel.font = PixelFont.speech
+        capabilityLabel.font = PixelFont.speech
+        capabilityLabel.textColor = PixelStyle.disabledTextColor
+        activeStatusLabel.font = PixelFont.speech
         activeStatusLabel.textColor = .systemBlue
 
         let roleColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("role"))
@@ -173,37 +183,36 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
         timeColumn.title = "更新时间"
         timeColumn.width = 140
         for column in [roleColumn, titleColumn, statusColumn, timeColumn] {
+            column.headerCell.font = PixelFont.speech
             tableView.addTableColumn(column)
         }
         tableView.dataSource = self
         tableView.delegate = self
         tableView.rowHeight = 28
-        tableView.usesAlternatingRowBackgroundColors = true
+        tableView.usesAlternatingRowBackgroundColors = false
+        tableView.backgroundColor = .clear
         tableView.allowsEmptySelection = true
 
         let scrollView = NSScrollView()
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
-        scrollView.borderType = .bezelBorder
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        let tableFrame = PixelFrameBoxView()
+        tableFrame.addSubview(scrollView)
 
-        detailLabel.font = .systemFont(ofSize: 12)
-        detailLabel.textColor = .secondaryLabelColor
+        detailLabel.font = PixelFont.speech
+        detailLabel.textColor = PixelStyle.disabledTextColor
         detailLabel.maximumNumberOfLines = 3
 
         runButton.target = self
         runButton.action = #selector(runDailyPlan)
-        runButton.bezelStyle = .regularSquare
-        runButton.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
         proposalButton.target = self
         proposalButton.action = #selector(requestTodoProposal)
-        proposalButton.bezelStyle = .regularSquare
-        proposalButton.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
         cancelButton.target = self
         cancelButton.action = #selector(cancelSelectedTask)
-        cancelButton.bezelStyle = .regularSquare
-        cancelButton.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
 
-        let topRow = NSStackView(views: [heading, rolePortraitView, rolePopup])
+        let topRow = NSStackView(views: [rolePortraitView, rolePopup])
         topRow.orientation = .horizontal
         topRow.alignment = .centerY
         topRow.spacing = 12
@@ -220,10 +229,17 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
         actionRow.alignment = .centerY
         actionRow.spacing = 8
 
-        for view in [topRow, specialtyLabel, capabilityLabel, activeStatusLabel, scrollView, detailLabel, actionRow] {
+        for view in [topRow, specialtyLabel, capabilityLabel, activeStatusLabel, tableFrame, detailLabel, actionRow] {
             view.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(view)
         }
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: tableFrame.leadingAnchor, constant: 3),
+            scrollView.trailingAnchor.constraint(equalTo: tableFrame.trailingAnchor, constant: -3),
+            scrollView.topAnchor.constraint(equalTo: tableFrame.topAnchor, constant: 3),
+            scrollView.bottomAnchor.constraint(equalTo: tableFrame.bottomAnchor, constant: -3),
+        ])
         NSLayoutConstraint.activate([
             topRow.topAnchor.constraint(equalTo: content.topAnchor, constant: 18),
             topRow.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 20),
@@ -237,10 +253,10 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
             activeStatusLabel.topAnchor.constraint(equalTo: capabilityLabel.bottomAnchor, constant: 8),
             activeStatusLabel.leadingAnchor.constraint(equalTo: topRow.leadingAnchor),
             activeStatusLabel.trailingAnchor.constraint(equalTo: topRow.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: activeStatusLabel.bottomAnchor, constant: 10),
-            scrollView.leadingAnchor.constraint(equalTo: topRow.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: topRow.trailingAnchor),
-            detailLabel.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 10),
+            tableFrame.topAnchor.constraint(equalTo: activeStatusLabel.bottomAnchor, constant: 10),
+            tableFrame.leadingAnchor.constraint(equalTo: topRow.leadingAnchor),
+            tableFrame.trailingAnchor.constraint(equalTo: topRow.trailingAnchor),
+            detailLabel.topAnchor.constraint(equalTo: tableFrame.bottomAnchor, constant: 10),
             detailLabel.leadingAnchor.constraint(equalTo: topRow.leadingAnchor),
             detailLabel.trailingAnchor.constraint(equalTo: topRow.trailingAnchor),
             actionRow.topAnchor.constraint(equalTo: detailLabel.bottomAnchor, constant: 10),
@@ -252,7 +268,7 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
     private func makeCell(identifier: NSUserInterfaceItemIdentifier) -> NSTextField {
         let field = NSTextField(labelWithString: "")
         field.identifier = identifier
-        field.font = .systemFont(ofSize: 12)
+        field.font = PixelFont.speech
         field.lineBreakMode = .byTruncatingTail
         return field
     }
