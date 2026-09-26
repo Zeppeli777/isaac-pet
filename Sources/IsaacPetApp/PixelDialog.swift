@@ -86,8 +86,18 @@ enum PixelDialog {
         initialFirstResponder: NSView?,
         buttons: [Button]
     ) -> String {
-        let window = buildDialogWindow(title: title, message: message, content: content, buttons: buttons) {
-            NSApp.stopModal(withCode: NSApplication.ModalResponse($0))
+        let (window, handler) = buildDialogWindow(title: title, message: message, content: content, buttons: buttons)
+        handler.onButton = { [weak handler] code in
+            guard let handler, handler.isModalRunning else { return }
+            handler.isModalRunning = false
+            NSApp.stopModal(withCode: NSApplication.ModalResponse(code))
+        }
+        // A dialog closed through any other path (the close button, Cmd-W) must still
+        // end the modal session, or the app stays trapped in an invisible modal loop.
+        handler.onCloseWhileModal = { [weak handler] in
+            guard let handler, handler.isModalRunning else { return }
+            handler.isModalRunning = false
+            NSApp.stopModal(withCode: NSApplication.ModalResponse(buttons.count))
         }
 
         NSApp.activate(ignoringOtherApps: true)
@@ -96,7 +106,9 @@ enum PixelDialog {
         if let initialFirstResponder {
             window.makeFirstResponder(initialFirstResponder)
         }
+        handler.isModalRunning = true
         let response = NSApp.runModal(for: window).rawValue
+        handler.isModalRunning = false
         window.orderOut(nil)
         onDismiss?()
         guard buttons.indices.contains(response) else {
@@ -111,10 +123,9 @@ enum PixelDialog {
         title: String,
         message: String?,
         content: NSView?,
-        buttons: [Button],
-        onButton: @escaping (Int) -> Void
-    ) -> PixelWindow {
-        let handler = DialogButtonClickHandler(onButton: onButton)
+        buttons: [Button]
+    ) -> (window: PixelWindow, handler: DialogButtonClickHandler) {
+        let handler = DialogButtonClickHandler()
 
         // Manual vertical layout: deterministic for frame-based form contents
         // (the LLM settings view positions its controls with explicit frames).
@@ -163,7 +174,9 @@ enum PixelDialog {
         buttonRow.alignment = .centerY
         buttonRow.spacing = 8
         for (index, button) in buttons.enumerated() {
-            let pixelButton = PixelButton(title: button.title, target: handler, action: #selector(DialogButtonClickHandler.buttonPressed(_:)))
+            let pixelButton = PixelButton(title: button.title, target: nil, action: nil)
+            pixelButton.target = handler
+            pixelButton.action = #selector(DialogButtonClickHandler.buttonPressed(_:))
             pixelButton.tag = index
             pixelButton.isDefaultStyled = button.isDefault
             if button.isDefault {
@@ -195,6 +208,7 @@ enum PixelDialog {
             title: title,
             resizable: false
         )
+        window.delegate = handler
         window.contentContainer.addSubview(column)
         let inset = PixelWindow.contentPadding
         NSLayoutConstraint.activate([
@@ -203,20 +217,25 @@ enum PixelDialog {
             column.trailingAnchor.constraint(equalTo: window.contentContainer.trailingAnchor, constant: -inset),
             column.bottomAnchor.constraint(equalTo: window.contentContainer.bottomAnchor, constant: -inset),
         ])
-        return window
+        return (window, handler)
     }
 }
 
 @MainActor
-private final class DialogButtonClickHandler: NSObject {
-    private let onButton: (Int) -> Void
-
-    init(onButton: @escaping (Int) -> Void) {
-        self.onButton = onButton
-    }
+final class DialogButtonClickHandler: NSObject, NSWindowDelegate {
+    var onButton: ((Int) -> Void)?
+    /// Runs while the modal session is alive; invoked once when the window closes
+    /// without a button press so the session cannot leak.
+    var onCloseWhileModal: (() -> Void)?
+    var isModalRunning = false
 
     @objc func buttonPressed(_ sender: NSButton) {
-        onButton(sender.tag)
+        onButton?(sender.tag)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        onCloseWhileModal?()
+        onCloseWhileModal = nil
     }
 }
 
