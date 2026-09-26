@@ -128,12 +128,8 @@ final class SpeechBubbleView: NSView {
         static let bottomShadow: CGFloat = 2
     }
 
-    // Palette sampled from the in-game message box reference
-    // (Assets/Source/Emotes/reference-message-box.png).
-    private static let borderColor = NSColor(calibratedRed: 0.70, green: 0.68, blue: 0.66, alpha: 1)
-    private static let fillColor = NSColor(calibratedRed: 0.93, green: 0.91, blue: 0.90, alpha: 1)
-    private static let shadowColor = NSColor(calibratedRed: 0.82, green: 0.80, blue: 0.79, alpha: 1)
-    private static let textColor = NSColor(calibratedRed: 0.24, green: 0.23, blue: 0.22, alpha: 1)
+    // Palette shared with the pixel UI kit (PixelStyle).
+    private static let textColor = PixelStyle.textColor
 
     var message = "" {
         didSet { needsDisplay = true }
@@ -212,12 +208,12 @@ final class SpeechBubbleView: NSView {
     }
 
     private func drawPixelBody(in rect: NSRect) {
-        Self.borderColor.setFill()
-        pixelRoundedPath(rect, radius: Layout.cornerRadius).fill()
+        PixelStyle.borderColor.setFill()
+        PixelStyle.pixelRoundedPath(rect, radius: Layout.cornerRadius).fill()
 
         let inner = rect.insetBy(dx: Layout.border, dy: Layout.border)
-        let innerPath = pixelRoundedPath(inner, radius: Layout.cornerRadius - Layout.border)
-        Self.fillColor.setFill()
+        let innerPath = PixelStyle.pixelRoundedPath(inner, radius: Layout.cornerRadius - Layout.border)
+        PixelStyle.fillColor.setFill()
         innerPath.fill()
 
         // The reference box darkens along its visually bottom inner edge, giving the
@@ -225,7 +221,7 @@ final class SpeechBubbleView: NSView {
         if let context = NSGraphicsContext.current {
             context.saveGraphicsState()
             innerPath.addClip()
-            Self.shadowColor.setFill()
+            PixelStyle.shadowColor.setFill()
             NSBezierPath(rect: NSRect(
                 x: inner.minX,
                 y: inner.minY,
@@ -239,7 +235,7 @@ final class SpeechBubbleView: NSView {
 
     private func drawPaperSpeckles(in innerRect: NSRect) {
         guard innerRect.width > 60, innerRect.height > 36 else { return }
-        Self.shadowColor.setFill()
+        PixelStyle.shadowColor.setFill()
         let spots: [NSPoint] = [
             NSPoint(x: 0.16, y: 0.32),
             NSPoint(x: 0.71, y: 0.24),
@@ -253,33 +249,10 @@ final class SpeechBubbleView: NSView {
         }
     }
 
-    /// A quarter-circle quantized onto the pixel grid, built from per-row rects so the
-    /// corners step like the game's message box instead of antialiasing into a curve.
+    /// A quarter-circle quantized onto the pixel grid; the shared implementation
+    /// lives in PixelStyle so windows and dialogs step the same way.
     private func pixelRoundedPath(_ rect: NSRect, radius: CGFloat) -> NSBezierPath {
-        let path = NSBezierPath()
-        let left = Int(rect.minX.rounded(.down))
-        let right = Int(rect.maxX.rounded(.up))
-        let bottom = Int(rect.minY.rounded(.down))
-        let top = Int(rect.maxY.rounded(.up))
-        let radiusInt = Int(radius)
-        for y in bottom..<top {
-            let depth = min(y - bottom, top - 1 - y)
-            let inset: Int
-            if depth >= radiusInt {
-                inset = 0
-            } else {
-                let offset = CGFloat(radiusInt - depth) - 0.5
-                let span = sqrt(CGFloat(radiusInt * radiusInt) - offset * offset).rounded(.down)
-                inset = radiusInt - Int(span)
-            }
-            path.append(NSBezierPath(rect: NSRect(
-                x: CGFloat(left + inset),
-                y: CGFloat(y),
-                width: CGFloat(right - left - inset * 2),
-                height: 1
-            )))
-        }
-        return path
+        PixelStyle.pixelRoundedPath(rect, radius: radius)
     }
 
     private func drawTail(from bodyRect: NSRect) {
@@ -296,14 +269,14 @@ final class SpeechBubbleView: NSView {
         for step in steps {
             let outerY = downward ? y - step.height : y
             let innerY = downward ? y - step.innerHeight : y
-            Self.borderColor.setFill()
+            PixelStyle.borderColor.setFill()
             NSBezierPath(rect: NSRect(
                 x: tailX - step.outer / 2,
                 y: outerY,
                 width: step.outer,
                 height: step.height
             )).fill()
-            Self.fillColor.setFill()
+            PixelStyle.fillColor.setFill()
             NSBezierPath(rect: NSRect(
                 x: tailX - step.inner / 2,
                 y: innerY,
