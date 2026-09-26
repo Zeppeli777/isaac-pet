@@ -21,6 +21,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/IsaacPet"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/spritesheet.webp Resources/shooting-atlas.webp Resources/walking-vertical-atlas.webp Resources/StatusIsaac.png Resources/IsaacPet.icns Resources/IsaacTear.png Resources/EmoteSad.png Resources/EmoteShocked.png Resources/EmoteHappy.png NOTICE.md "$APP/Contents/Resources/"
+mkdir -p "$APP/Contents/Resources/Fonts"
+cp Resources/Fonts/fusion-pixel-12px-proportional-zh_hans.ttf Resources/Fonts/OFL.txt "$APP/Contents/Resources/Fonts/"
 if [ -d Resources/Agents ]; then
   cp -R Resources/Agents "$APP/Contents/Resources/Agents"
 fi
