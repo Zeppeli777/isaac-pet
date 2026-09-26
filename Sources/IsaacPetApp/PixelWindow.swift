@@ -27,6 +27,10 @@ final class PixelWindow: NSWindow {
         chrome.frame = NSRect(origin: .zero, size: size)
         contentView = chrome
         isReleasedWhenClosed = false
+        // The chrome's stepped pixel corners leave the window corners transparent;
+        // without a clear background the window's default white shows as square blocks.
+        backgroundColor = .clear
+        isOpaque = false
         isMovableByWindowBackground = true
         collectionBehavior = [.moveToActiveSpace]
         if let minSize {
