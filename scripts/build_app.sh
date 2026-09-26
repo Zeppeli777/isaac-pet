@@ -20,7 +20,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/IsaacPet"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
-cp Resources/spritesheet.webp Resources/shooting-atlas.webp Resources/walking-vertical-atlas.webp Resources/StatusIsaac.png Resources/IsaacPet.icns Resources/IsaacTear.png NOTICE.md "$APP/Contents/Resources/"
+cp Resources/spritesheet.webp Resources/shooting-atlas.webp Resources/walking-vertical-atlas.webp Resources/StatusIsaac.png Resources/IsaacPet.icns Resources/IsaacTear.png Resources/EmoteSad.png Resources/EmoteShocked.png Resources/EmoteHappy.png NOTICE.md "$APP/Contents/Resources/"
 if [ -d Resources/Agents ]; then
   cp -R Resources/Agents "$APP/Contents/Resources/Agents"
 fi

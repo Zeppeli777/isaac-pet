@@ -112,6 +112,16 @@ enum IsaacPetCoreChecks {
         check(SpeechBubblePolicy.normalized(longSpeech)?.hasSuffix("…") == true, "speech truncation marker")
         check(SpeechBubblePolicy.displayDuration(for: "hi") == 3.11, "short speech duration")
         check(SpeechBubblePolicy.displayDuration(for: longSpeech) == 8, "speech duration cap")
+        check(SpeechBubblePolicy.emoteDisplayDuration > 2 && SpeechBubblePolicy.emoteDisplayDuration < 5, "emote duration sane")
+        check(EmoteID.allCases.allSatisfy { !$0.resourceName.isEmpty }, "every emote names its resource")
+        check(
+            EmoteID.allCases.allSatisfy { AnimationCatalog.specs[$0.companionAnimation] != nil },
+            "every emote pairs with a catalog animation"
+        )
+        check(
+            ["sad", "shocked", "happy"].contains(EmoteID.random().rawValue),
+            "random emote picks a member"
+        )
 
         let todoNow = Date(timeIntervalSince1970: 1_000)
         let earlyTodo = TodoItem(

@@ -280,6 +280,36 @@ public enum SpeechBubblePolicy {
     public static func displayDuration(for message: String) -> TimeInterval {
         min(max(3 + Double(message.count) * 0.055, 3), 8)
     }
+
+    public static let emoteDisplayDuration: TimeInterval = 3.2
+}
+
+/// The in-game style emote bubbles shown above the pet; each ships as a standalone
+/// PNG in the app bundle and pairs with the animation the pet performs alongside it.
+public enum EmoteID: String, CaseIterable, Sendable {
+    case sad
+    case shocked
+    case happy
+
+    public var resourceName: String {
+        switch self {
+        case .sad: "EmoteSad"
+        case .shocked: "EmoteShocked"
+        case .happy: "EmoteHappy"
+        }
+    }
+
+    public var companionAnimation: AnimationID {
+        switch self {
+        case .sad: .cry
+        case .shocked: .observe
+        case .happy: .thumbsUp
+        }
+    }
+
+    public static func random() -> EmoteID {
+        allCases.randomElement() ?? .happy
+    }
 }
 
 public struct TodoItem: Codable, Equatable, Identifiable, Sendable {

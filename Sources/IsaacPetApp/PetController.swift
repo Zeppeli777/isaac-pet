@@ -16,6 +16,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private let tearFrame: SpriteFrame
     private let settingsStore: SettingsStore
     private let speechBubble: SpeechBubbleController
+    private let emoteBubble = EmoteBubbleController()
     private let todoStore: TodoStore
     private let todoReminderCoordinator: TodoReminderCoordinator
     private let agentReminderCoordinator: AgentReminderCoordinator
@@ -328,6 +329,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         checkDueTodos(now: ProcessInfo.processInfo.systemUptime)
         refreshAgentUI(now: ProcessInfo.processInfo.systemUptime)
         updateSpeechBubbleAnchor()
+        updateEmoteBubbleAnchor()
     }
 
     func stop() {
@@ -344,6 +346,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         dailyPlanWindowController?.close()
         agentWindowController?.close()
         speechBubble.stop()
+        emoteBubble.stop()
     }
 
     private func tick() {
@@ -671,6 +674,11 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         speechBubble.updateAnchor(petFrame: panel.frame, screenFrame: screen.visibleFrame)
     }
 
+    private func updateEmoteBubbleAnchor() {
+        guard emoteBubble.isVisible, let screen = currentScreen() else { return }
+        emoteBubble.updateAnchor(petFrame: panel.frame, screenFrame: screen.visibleFrame)
+    }
+
     private func checkDueTodos(now: TimeInterval) {
         guard now >= nextTodoCheckAt else { return }
         nextTodoCheckAt = now + 0.75
@@ -771,6 +779,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         guard !isPlayMode else { return }
         isPlayMode = true
         speechBubble.hide()
+        emoteBubble.hide()
         targetX = nil
         actionEndsAt = nil
         hoveredSince = nil
@@ -910,8 +919,12 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     }
 
     @objc private func showRandomExpression() {
-        perform(.thumbsUp)
-        showSpeech(PetSpeechLibrary.randomExpression())
+        guard !isPlayMode else { return }
+        let emote = EmoteID.random()
+        perform(emote.companionAnimation)
+        guard let spriteFrame = try? atlas.emoteFrame(emote), let screen = currentScreen() else { return }
+        speechBubble.hide()
+        emoteBubble.show(spriteFrame, anchoredTo: panel.frame, in: screen.visibleFrame, scale: settings.scale)
     }
 
     @objc private func composeSpeech() {
