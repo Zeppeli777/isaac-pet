@@ -48,7 +48,7 @@ final class DailyPlanWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func configureContent() {
-        guard let contentView = window?.contentView else { return }
+        guard let contentView = (window as? PixelWindow)?.contentContainer else { return }
 
         headlineLabel.font = PixelFont.speech
         headlineLabel.textColor = PixelStyle.textColor

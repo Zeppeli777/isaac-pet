@@ -41,10 +41,10 @@ final class PixelWindow: NSWindow {
 
     static func contentAreaRect(in bounds: NSRect) -> NSRect {
         NSRect(
-            x: borderWidth + contentPadding,
-            y: borderWidth + contentPadding,
-            width: bounds.width - (borderWidth + contentPadding) * 2,
-            height: bounds.height - borderWidth * 2 - contentPadding - headerHeight
+            x: borderWidth,
+            y: borderWidth,
+            width: bounds.width - borderWidth * 2,
+            height: bounds.height - borderWidth * 2 - headerHeight
         )
     }
 }

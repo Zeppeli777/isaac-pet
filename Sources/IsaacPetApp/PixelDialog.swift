@@ -62,6 +62,7 @@ enum PixelDialog {
         let field = PixelStyledField()
         field.placeholderString = placeholder
         field.stringValue = defaultValue
+        field.frame = NSRect(x: 0, y: 0, width: 440, height: 24)
         let result = presentForm(
             title: title,
             message: message,
@@ -85,22 +86,76 @@ enum PixelDialog {
         initialFirstResponder: NSView?,
         buttons: [Button]
     ) -> String {
-        let handler = DialogButtonClickHandler {
+        let window = buildDialogWindow(title: title, message: message, content: content, buttons: buttons) {
             NSApp.stopModal(withCode: NSApplication.ModalResponse($0))
         }
 
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.alignment = .width
-        stack.spacing = 12
+        NSApp.activate(ignoringOtherApps: true)
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        if let initialFirstResponder {
+            window.makeFirstResponder(initialFirstResponder)
+        }
+        let response = NSApp.runModal(for: window).rawValue
+        window.orderOut(nil)
+        onDismiss?()
+        guard buttons.indices.contains(response) else {
+            return buttons.first(where: \.isCancel)?.identifier ?? "cancel"
+        }
+        return buttons[response].identifier
+    }
+
+    /// Builds the dialog's pixel window; split out so QA can render the real
+    /// layout offscreen without entering a modal session.
+    static func buildDialogWindow(
+        title: String,
+        message: String?,
+        content: NSView?,
+        buttons: [Button],
+        onButton: @escaping (Int) -> Void
+    ) -> PixelWindow {
+        let handler = DialogButtonClickHandler(onButton: onButton)
+
+        // Manual vertical layout: deterministic for frame-based form contents
+        // (the LLM settings view positions its controls with explicit frames).
+        let column = NSView()
+        column.translatesAutoresizingMaskIntoConstraints = false
+        let dialogWidth = max(columnWidth, content?.frame.width ?? 0)
+
+        // Width is pinned only for measurement; at window attach the edges carry
+        // the content padding instead.
+        let columnWidthConstraint = column.widthAnchor.constraint(equalToConstant: dialogWidth)
+        var constraints: [NSLayoutConstraint] = [columnWidthConstraint]
+        var previousBottom: NSLayoutYAxisAnchor = column.topAnchor
         if let message, !message.isEmpty {
             let messageRow = NSTextField(wrappingLabelWithString: message)
             messageRow.font = PixelFont.speech
             messageRow.textColor = PixelStyle.textColor
-            stack.addArrangedSubview(messageRow)
+            messageRow.alignment = .left
+            messageRow.translatesAutoresizingMaskIntoConstraints = false
+            column.addSubview(messageRow)
+            constraints += [
+                messageRow.topAnchor.constraint(equalTo: previousBottom, constant: 4),
+                messageRow.leadingAnchor.constraint(equalTo: column.leadingAnchor),
+                messageRow.trailingAnchor.constraint(equalTo: column.trailingAnchor),
+            ]
+            previousBottom = messageRow.bottomAnchor
         }
         if let content {
-            stack.addArrangedSubview(content)
+            content.translatesAutoresizingMaskIntoConstraints = false
+            column.addSubview(content)
+            constraints += [
+                content.topAnchor.constraint(equalTo: previousBottom, constant: 12),
+                content.leadingAnchor.constraint(equalTo: column.leadingAnchor),
+            ]
+            let contentHeight = content.frame.height > 0
+                ? content.frame.height
+                : max(24, content.intrinsicContentSize.height)
+            constraints.append(content.heightAnchor.constraint(equalToConstant: contentHeight))
+            if abs(content.frame.width - dialogWidth) < 1 {
+                constraints.append(content.trailingAnchor.constraint(equalTo: column.trailingAnchor))
+            }
+            previousBottom = content.bottomAnchor
         }
 
         let buttonRow = NSStackView()
@@ -119,51 +174,36 @@ enum PixelDialog {
             }
             buttonRow.addArrangedSubview(pixelButton)
         }
-        // Spacer pushes the buttons to the trailing edge.
-        let spacer = NSView()
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        buttonRow.insertArrangedSubview(spacer, at: 0)
-        stack.addArrangedSubview(buttonRow)
-        if let beforeButtons = stack.arrangedSubviews.dropLast().last {
-            stack.setCustomSpacing(16, after: beforeButtons)
-        }
+        buttonRow.translatesAutoresizingMaskIntoConstraints = false
+        column.addSubview(buttonRow)
+        constraints += [
+            buttonRow.topAnchor.constraint(equalTo: previousBottom, constant: 16),
+            buttonRow.trailingAnchor.constraint(equalTo: column.trailingAnchor),
+            buttonRow.leadingAnchor.constraint(greaterThanOrEqualTo: column.leadingAnchor),
+            column.bottomAnchor.constraint(equalTo: buttonRow.bottomAnchor),
+        ]
+        NSLayoutConstraint.activate(constraints)
 
-        let contentWidth = content?.frame.width ?? 0
-        let dialogWidth = max(columnWidth, contentWidth)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        let widthConstraint = stack.widthAnchor.constraint(equalToConstant: dialogWidth)
-        widthConstraint.isActive = true
-        let fittingHeight = max(96, stack.fittingSize.height)
+        let columnFittedHeight = max(72, column.fittingSize.height)
+        columnWidthConstraint.isActive = false
 
         let window = PixelWindow(
             size: NSSize(
-                width: dialogWidth + (PixelWindow.borderWidth + PixelWindow.contentPadding) * 2,
-                height: fittingHeight + PixelWindow.borderWidth * 2 + PixelWindow.contentPadding + PixelWindow.headerHeight
+                width: dialogWidth + PixelWindow.contentPadding * 2 + PixelWindow.borderWidth * 2,
+                height: columnFittedHeight + PixelWindow.contentPadding * 2 + PixelWindow.borderWidth * 2 + PixelWindow.headerHeight
             ),
             title: title,
             resizable: false
         )
-        window.contentContainer.addSubview(stack)
+        window.contentContainer.addSubview(column)
+        let inset = PixelWindow.contentPadding
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: window.contentContainer.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: window.contentContainer.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: window.contentContainer.trailingAnchor),
-            stack.bottomAnchor.constraint(equalTo: window.contentContainer.bottomAnchor),
+            column.topAnchor.constraint(equalTo: window.contentContainer.topAnchor, constant: inset),
+            column.leadingAnchor.constraint(equalTo: window.contentContainer.leadingAnchor, constant: inset),
+            column.trailingAnchor.constraint(equalTo: window.contentContainer.trailingAnchor, constant: -inset),
+            column.bottomAnchor.constraint(equalTo: window.contentContainer.bottomAnchor, constant: -inset),
         ])
-
-        NSApp.activate(ignoringOtherApps: true)
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        if let initialFirstResponder {
-            window.makeFirstResponder(initialFirstResponder)
-        }
-        let response = NSApp.runModal(for: window).rawValue
-        window.orderOut(nil)
-        onDismiss?()
-        guard buttons.indices.contains(response) else {
-            return buttons.first(where: \.isCancel)?.identifier ?? "cancel"
-        }
-        return buttons[response].identifier
+        return window
     }
 }
 

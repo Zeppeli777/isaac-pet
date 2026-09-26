@@ -113,7 +113,7 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
     }
 
     private func configureContent() {
-        guard let contentView = window?.contentView else { return }
+        guard let contentView = (window as? PixelWindow)?.contentContainer else { return }
 
         summaryLabel.font = PixelFont.speech
         summaryLabel.textColor = PixelStyle.disabledTextColor
@@ -199,7 +199,6 @@ final class TodoWindowController: NSWindowController, NSTableViewDataSource, NST
             tableFrame.topAnchor.constraint(equalTo: summaryLabel.bottomAnchor, constant: 8),
             tableFrame.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             tableFrame.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            tableFrame.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
 
             scrollView.leadingAnchor.constraint(equalTo: tableFrame.leadingAnchor, constant: 3),
             scrollView.trailingAnchor.constraint(equalTo: tableFrame.trailingAnchor, constant: -3),

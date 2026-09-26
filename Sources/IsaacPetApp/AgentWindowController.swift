@@ -140,7 +140,7 @@ final class AgentWindowController: NSWindowController, NSTableViewDataSource, NS
     }
 
     private func configureContent() {
-        guard let content = window?.contentView else { return }
+        guard let content = (window as? PixelWindow)?.contentContainer else { return }
         let heading = NSTextField(labelWithString: "AGENT CONTROL")
         heading.font = NSFont(name: "Menlo-Bold", size: 20)
             ?? NSFont.monospacedSystemFont(ofSize: 20, weight: .bold)
