@@ -666,6 +666,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
 
     private func showSpeech(_ message: String) {
         guard !isPlayMode, let screen = currentScreen() else { return }
+        // The speech and emote panels float at the same spot above the pet; showing
+        // one must dismiss the other or they overlap for the emote's 3.2s lifetime.
+        emoteBubble.hide()
         speechBubble.show(message, anchoredTo: panel.frame, in: screen.visibleFrame)
     }
 
