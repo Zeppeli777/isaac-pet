@@ -503,7 +503,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
                 dy: vector.dy * Self.shotSpeed * settings.scale
             ),
             size: CGFloat(tearFrame.width) * settings.scale,
-            scale: settings.scale
+            scale: settings.scale,
+            behindPet: direction == .up,
+            petWindowNumber: panel.windowNumber
         ))
     }
 

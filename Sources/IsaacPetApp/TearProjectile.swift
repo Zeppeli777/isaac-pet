@@ -28,7 +28,9 @@ final class TearProjectile {
         center: NSPoint,
         velocity: CGVector,
         size: CGFloat,
-        scale: CGFloat
+        scale: CGFloat,
+        behindPet: Bool = false,
+        petWindowNumber: Int = 0
     ) {
         self.velocity = velocity
         self.center = center
@@ -58,7 +60,13 @@ final class TearProjectile {
         panel.isReleasedWhenClosed = false
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-        panel.orderFrontRegardless()
+        if behindPet, petWindowNumber != 0 {
+            // Up-shot tears leave from behind the back-facing head, so the pet covers
+            // them until they clear its silhouette instead of lighting up on the hair.
+            panel.order(.below, relativeTo: petWindowNumber)
+        } else {
+            panel.orderFrontRegardless()
+        }
     }
 
     func update(delta: TimeInterval) {
