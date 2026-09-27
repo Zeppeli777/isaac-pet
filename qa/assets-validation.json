@@ -679,14 +679,26 @@
     }
   },
   "tear": {
-    "path": "Resources/IsaacTear.png",
-    "size": [
-      19,
-      19
-    ],
-    "components": 1,
-    "round": true,
-    "palette": true,
+    "tear": {
+      "path": "Resources/IsaacTear.png",
+      "size": [
+        28,
+        28
+      ],
+      "components": 1,
+      "round": true,
+      "palette": true
+    },
+    "drop": {
+      "path": "Resources/IsaacTearDrop.png",
+      "size": [
+        10,
+        10
+      ],
+      "components": 1,
+      "round": true,
+      "palette": true
+    },
     "contact_sheet": "qa/tear-contact-sheet.png"
   },
   "emotes": {

@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 
-if [ "${ISAAC_REGENERATE_ASSETS:-0}" = "1" ] || [ ! -f Resources/spritesheet.webp ] || [ ! -f Resources/shooting-atlas.webp ] || [ ! -f Resources/walking-vertical-atlas.webp ] || [ ! -f Resources/IsaacPet.icns ] || [ ! -f Resources/IsaacTear.png ]; then
+if [ "${ISAAC_REGENERATE_ASSETS:-0}" = "1" ] || [ ! -f Resources/spritesheet.webp ] || [ ! -f Resources/shooting-atlas.webp ] || [ ! -f Resources/walking-vertical-atlas.webp ] || [ ! -f Resources/IsaacPet.icns ] || [ ! -f Resources/IsaacTear.png ] || [ ! -f Resources/IsaacTearDrop.png ]; then
   PYTHON=${ISAAC_PYTHON:-python3}
   if ! "$PYTHON" -c 'import PIL' 2>/dev/null; then
     echo "Asset regeneration requires Pillow. Set ISAAC_PYTHON and PYTHONPATH if it is installed in a custom environment." >&2
@@ -20,7 +20,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/IsaacPet"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
-cp Resources/spritesheet.webp Resources/shooting-atlas.webp Resources/walking-vertical-atlas.webp Resources/StatusIsaac.png Resources/IsaacPet.icns Resources/IsaacTear.png Resources/EmoteSad.png Resources/EmoteShocked.png Resources/EmoteHappy.png NOTICE.md "$APP/Contents/Resources/"
+cp Resources/spritesheet.webp Resources/shooting-atlas.webp Resources/walking-vertical-atlas.webp Resources/StatusIsaac.png Resources/IsaacPet.icns Resources/IsaacTear.png Resources/IsaacTearDrop.png Resources/EmoteSad.png Resources/EmoteShocked.png Resources/EmoteHappy.png NOTICE.md "$APP/Contents/Resources/"
 mkdir -p "$APP/Contents/Resources/Fonts"
 cp Resources/Fonts/fusion-pixel-12px-proportional-zh_hans.ttf Resources/Fonts/OFL.txt "$APP/Contents/Resources/Fonts/"
 if [ -d Resources/Agents ]; then

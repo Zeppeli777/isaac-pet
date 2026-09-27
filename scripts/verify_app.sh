@@ -26,7 +26,12 @@ VERTICAL_WALK_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/wal
 [ "$VERTICAL_WALK_WIDTH" = "1536" ] && [ "$VERTICAL_WALK_HEIGHT" = "416" ] || { echo "Unexpected vertical walking atlas size: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT}" >&2; exit 1; }
 TEAR_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/IsaacTear.png" | awk '/pixelWidth/ {print $2}')
 TEAR_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/IsaacTear.png" | awk '/pixelHeight/ {print $2}')
-[ "$TEAR_WIDTH" = "19" ] && [ "$TEAR_HEIGHT" = "19" ] || { echo "Unexpected tear size: ${TEAR_WIDTH}x${TEAR_HEIGHT}" >&2; exit 1; }
+[ "$TEAR_WIDTH" = "28" ] && [ "$TEAR_HEIGHT" = "28" ] || { echo "Unexpected tear size: ${TEAR_WIDTH}x${TEAR_HEIGHT}" >&2; exit 1; }
+DROP="$APP/Contents/Resources/IsaacTearDrop.png"
+[ -f "$DROP" ] || { echo "Missing Isaac tear drop" >&2; exit 1; }
+DROP_WIDTH=$(/usr/bin/sips -g pixelWidth "$DROP" | awk '/pixelWidth/ {print $2}')
+DROP_HEIGHT=$(/usr/bin/sips -g pixelHeight "$DROP" | awk '/pixelHeight/ {print $2}')
+[ "$DROP_WIDTH" = "10" ] && [ "$DROP_HEIGHT" = "10" ] || { echo "Unexpected tear drop size: ${DROP_WIDTH}x${DROP_HEIGHT}" >&2; exit 1; }
 if [ -d "$APP/Contents/Resources/Agents" ]; then
   while IFS= read -r role_atlas; do
     ROLE_WIDTH=$(/usr/bin/sips -g pixelWidth "$role_atlas" | awk '/pixelWidth/ {print $2}')
@@ -59,6 +64,6 @@ done
 echo "atlas: ${WIDTH}x${HEIGHT} RGBA"
 echo "shooting atlas: ${SHOOT_WIDTH}x${SHOOT_HEIGHT} Isaac source frames"
 echo "vertical walking atlas: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT} Isaac source frames"
-echo "tear: ${TEAR_WIDTH}x${TEAR_HEIGHT} Isaac palette"
+echo "tear: ${TEAR_WIDTH}x${TEAR_HEIGHT} Isaac palette; drop: ${DROP_WIDTH}x${DROP_HEIGHT}"
 swift run IsaacPetCoreChecks
 echo "Verified: $APP"

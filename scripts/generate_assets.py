@@ -22,7 +22,8 @@ VERTICAL_WALK_ROWS = 2
 WALK_TARGET_WIDTH = 112
 WALK_HEAD_TOP = 46
 WALK_BODY_MARGIN = 28
-TEAR_SIZE = 19
+TEAR_SIZE = 28
+TEAR_DROP_SIZE = 10
 # Sampled from the Isaac tear reference: black rim, then three steps of lit blue.
 TEAR_OUTLINE = (7, 0, 0, 255)
 TEAR_SHADE = (120, 162, 248, 255)
@@ -158,19 +159,18 @@ def make_icons(base: Image.Image) -> None:
     subprocess.run(["/usr/bin/iconutil", "-c", "icns", str(iconset), "-o", str(icns)], check=True)
 
 
-def make_tear_sprite() -> None:
-    # Isaac's tears are round orbs: a dark rim around a blue ball with a bright highlight,
-    # so the projectile is shaded here instead of cropping the detached crying-face blob.
-    canvas = Image.new("RGBA", (TEAR_SIZE, TEAR_SIZE), (0, 0, 0, 0))
+def draw_tear(size: int) -> Image.Image:
+    """Shade a round Isaac tear: dark rim, three steps of lit blue, bright highlight."""
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     pixels = canvas.load()
-    center = (TEAR_SIZE - 1) / 2
-    radius = TEAR_SIZE / 2
+    center = (size - 1) / 2
+    radius = size / 2
     rim = 0.24
-    highlight_center = (center - 1.8, center - 1.6)
-    highlight_radius = 2.4
     light = (-0.30, 0.42, 0.86)  # the light source sits above and to the left of the tear
-    for y in range(TEAR_SIZE):
-        for x in range(TEAR_SIZE):
+    highlight_center = (center - 0.064 * size, center - 0.057 * size)
+    highlight_radius = 0.086 * size
+    for y in range(size):
+        for x in range(size):
             nx = (x - center) / (radius - 0.15)
             ny = (y - center) / (radius - 0.15)
             distance = hypot(nx, ny)
@@ -188,13 +188,24 @@ def make_tear_sprite() -> None:
                 pixels[x, y] = TEAR_BODY
             else:
                 pixels[x, y] = TEAR_SHADE
+    return canvas
+
+
+def make_tear_sprite() -> None:
+    # Isaac's tears are round orbs: a dark rim around a blue ball with a bright highlight,
+    # so the projectile is shaded here instead of cropping the detached crying-face blob.
+    canvas = draw_tear(TEAR_SIZE)
     canvas.save(RESOURCES / "IsaacTear.png")
+    # The smaller drop is what a tear bursts into when its arc ends.
+    draw_tear(TEAR_DROP_SIZE).save(RESOURCES / "IsaacTearDrop.png")
 
     # Keep the round shape reviewable next to the other atlases.
+    drop = Image.open(RESOURCES / "IsaacTearDrop.png")
     magnified = nearest(canvas, 8)
+    drop_magnified = nearest(drop, 4)
     contact = Image.new(
         "RGBA",
-        (magnified.width + 60, magnified.height + 28),
+        (magnified.width + drop_magnified.width + 180, magnified.height + 28),
         (35, 35, 42, 255),
     )
     contact.alpha_composite(canvas, (20, 28))
@@ -202,28 +213,39 @@ def make_tear_sprite() -> None:
     draw = ImageDraw.Draw(contact)
     draw.text((20, 6), "1x", fill=(255, 255, 255, 255))
     draw.text((39, 6), "8x", fill=(255, 255, 255, 255))
+    contact.alpha_composite(drop_magnified, (magnified.width + 100, 28))
+    draw.text((magnified.width + 100, 6), "drop 4x", fill=(255, 255, 255, 255))
     contact.save(QA / "tear-contact-sheet.png")
 
 
-def tear_validation(tear: Image.Image) -> dict[str, object]:
+def tear_validation(tear: Image.Image, size: int, path: str) -> dict[str, object]:
     palette = {TEAR_OUTLINE, TEAR_SHADE, TEAR_BODY, TEAR_HIGHLIGHT}
     alpha = tear.getchannel("A")
     pixels = alpha.load()
-    center = (TEAR_SIZE - 1) / 2
-    radius = TEAR_SIZE / 2
+    center = (size - 1) / 2
+    radius = size / 2
     inside_circle = all(
         hypot(x - center, y - center) <= radius
-        for y in range(TEAR_SIZE)
-        for x in range(TEAR_SIZE)
+        for y in range(size)
+        for x in range(size)
         if pixels[x, y]
     )
     colors = {color for color in tear.getdata() if color[3]}
     return {
-        "path": "Resources/IsaacTear.png",
-        "size": [TEAR_SIZE, TEAR_SIZE],
+        "path": path,
+        "size": [size, size],
         "components": connected_components(tear),
         "round": inside_circle,
         "palette": sorted(color[:3] for color in colors) == sorted(color[:3] for color in palette),
+    }
+
+
+def tear_validation_report() -> dict[str, object]:
+    tear = Image.open(RESOURCES / "IsaacTear.png").convert("RGBA")
+    drop = Image.open(RESOURCES / "IsaacTearDrop.png").convert("RGBA")
+    return {
+        "tear": tear_validation(tear, TEAR_SIZE, "Resources/IsaacTear.png"),
+        "drop": tear_validation(drop, TEAR_DROP_SIZE, "Resources/IsaacTearDrop.png"),
         "contact_sheet": "qa/tear-contact-sheet.png",
     }
 
@@ -664,7 +686,7 @@ def main() -> None:
                 for direction in ("down", "up")
             },
         },
-        "tear": tear_validation(final_tear),
+        "tear": tear_validation_report(),
         "emotes": emote_validation(emote_bubbles),
     }
     validation["ok"] = atlas.size == ATLAS_SIZE and all(
@@ -698,13 +720,14 @@ def main() -> None:
         for item in validation["vertical_walking_atlas"]["cells"][direction]
     ) and idle_bbox is not None and idle_bbox[2] - idle_bbox[0] == WALK_TARGET_WIDTH
     tear = validation["tear"]
-    validation["ok"] = (
-        validation["ok"]
-        and tear["size"] == [TEAR_SIZE, TEAR_SIZE]
-        and tear["components"] == 1
-        and tear["round"]
-        and tear["palette"]
-    )
+    for expected_size, orb in ((TEAR_SIZE, tear["tear"]), (TEAR_DROP_SIZE, tear["drop"])):
+        validation["ok"] = (
+            validation["ok"]
+            and orb["size"] == [expected_size, expected_size]
+            and orb["components"] == 1
+            and orb["round"]
+            and orb["palette"]
+        )
     for emote in validation["emotes"].values():
         validation["ok"] = validation["ok"] and emote["components"] == 1 and emote["palette"]
     (QA / "assets-validation.json").write_text(json.dumps(validation, indent=2) + "\n")
