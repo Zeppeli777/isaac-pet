@@ -9,11 +9,14 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         height: AnimationCatalog.cellHeight
     )
     private static let shootingPoseDuration: TimeInterval = 0.11
+    /// Tear flight speed in points per second, before the appearance scale is applied.
+    private static let shotSpeed: CGFloat = 330
 
     private let panel: PetPanel
     private let petView: PetView
     private var atlas: SpriteAtlas
     private let tearFrame: SpriteFrame
+    private let tearDropFrame: SpriteFrame
     private let settingsStore: SettingsStore
     private let speechBubble: SpeechBubbleController
     private let emoteBubble = EmoteBubbleController()
@@ -51,6 +54,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private var shootingPoseDirection: Direction8?
     private var shootingPoseEndsAt: TimeInterval = 0
     private var projectiles: [TearProjectile] = []
+    private var drops: [TearDrop] = []
     private var keyEventMonitor: Any?
     private var todoWindowController: TodoWindowController?
     private var dailyPlanWindowController: DailyPlanWindowController?
@@ -87,6 +91,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             }
         }
         tearFrame = try self.atlas.tearFrame()
+        tearDropFrame = try self.atlas.tearDropFrame()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
 
         let size = NSSize(
@@ -385,7 +390,8 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         lastTick = now
 
         if isPlayMode {
-            updateProjectiles(delta: delta, now: now)
+            updateProjectiles(delta: delta)
+            updateDrops(delta: delta)
             if isDragging {
                 render(now: now)
                 updateMousePassThrough()
@@ -492,26 +498,67 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         projectiles.append(TearProjectile(
             spriteFrame: tearFrame,
             center: center,
-            velocity: CGVector(dx: vector.dx * 330, dy: vector.dy * 330),
-            size: 18 * settings.scale,
-            expiresAt: now + 1.45
+            velocity: CGVector(
+                dx: vector.dx * Self.shotSpeed * settings.scale,
+                dy: vector.dy * Self.shotSpeed * settings.scale
+            ),
+            size: CGFloat(tearFrame.width) * settings.scale,
+            scale: settings.scale,
+            behindPet: direction == .up,
+            petWindowNumber: panel.windowNumber
         ))
     }
 
-    private func updateProjectiles(delta: TimeInterval, now: TimeInterval) {
+    private func updateProjectiles(delta: TimeInterval) {
         for projectile in projectiles { projectile.update(delta: delta) }
+        var bursts: [NSPoint] = []
         projectiles.removeAll { projectile in
-            let shouldRemove = now >= projectile.expiresAt || !NSScreen.screens.contains { screen in
+            let onScreen = NSScreen.screens.contains { screen in
                 screen.frame.intersects(projectile.frame)
             }
+            if projectile.landed {
+                bursts.append(NSPoint(x: projectile.frame.midX, y: projectile.frame.midY))
+            }
+            let shouldRemove = projectile.landed || !onScreen
             if shouldRemove { projectile.remove() }
             return shouldRemove
         }
+        for center in bursts { spawnTearBurst(at: center) }
+    }
+
+    /// A tear that finishes its arc bursts into a few droplets instead of vanishing.
+    private func spawnTearBurst(at center: NSPoint) {
+        guard drops.count < 48 else { return }
+        for index in 0..<4 {
+            let angle = CGFloat.pi * 2 * CGFloat(index) / 4 + CGFloat.random(in: 0...0.7)
+            let speed = CGFloat.random(in: 70...130) * settings.scale
+            drops.append(TearDrop(
+                spriteFrame: tearDropFrame,
+                center: center,
+                velocity: CGVector(dx: cos(angle) * speed, dy: abs(sin(angle)) * speed),
+                size: CGFloat(tearDropFrame.width) * settings.scale,
+                scale: settings.scale
+            ))
+        }
+    }
+
+    private func updateDrops(delta: TimeInterval) {
+        var alive: [TearDrop] = []
+        for drop in drops {
+            if drop.update(delta: delta) {
+                drop.remove()
+            } else {
+                alive.append(drop)
+            }
+        }
+        drops = alive
     }
 
     private func removeAllProjectiles() {
         for projectile in projectiles { projectile.remove() }
         projectiles.removeAll()
+        for drop in drops { drop.remove() }
+        drops.removeAll()
     }
 
     private func updateAttention(now: TimeInterval) {
