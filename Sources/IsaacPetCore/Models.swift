@@ -11,6 +11,9 @@ public enum AnimationID: String, CaseIterable, Sendable {
     case waiting
     case thumbsUp
     case observe
+    /// 举卡抽牌动作。Renders from the derived per-role raising helper atlas,
+    /// not from the row recorded in its spec.
+    case drawCard
 }
 
 public struct AnimationSpec: Equatable, Sendable {
@@ -177,6 +180,8 @@ public enum AnimationCatalog {
     public static let rows = 11
     public static let verticalWalkingColumns = 8
     public static let verticalWalkingRows = 2
+    public static let raisingColumns = 8
+    public static let raisingRows = 1
 
     public static let specs: [AnimationID: AnimationSpec] = [
         .idle: AnimationSpec(row: 0, frameCount: 7, frameDuration: 0.18, loops: true),
@@ -188,6 +193,9 @@ public enum AnimationCatalog {
         .waiting: AnimationSpec(row: 6, frameCount: 6, frameDuration: 0.16, loops: false),
         .thumbsUp: AnimationSpec(row: 7, frameCount: 6, frameDuration: 0.15, loops: false),
         .observe: AnimationSpec(row: 8, frameCount: 6, frameDuration: 0.15, loops: false),
+        // The row is the thumbsUp source row this motion derives from; the raise
+        // animation itself renders from the raising helper atlas with a held pose.
+        .drawCard: AnimationSpec(row: 7, frameCount: 8, frameDuration: 0.13, loops: false),
     ]
 
     public static let verticalWalkingSpecs: [VerticalWalkingDirection: AnimationSpec] = [

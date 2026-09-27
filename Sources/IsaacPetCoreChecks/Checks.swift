@@ -123,6 +123,62 @@ enum IsaacPetCoreChecks {
             "random emote picks a member"
         )
 
+        check(AnimationCatalog.raisingColumns == 8 && AnimationCatalog.raisingRows == 1, "raising atlas shape")
+        check(AnimationCatalog.spec(for: .drawCard).frameCount == 8, "draw card frame count")
+        check(
+            !AnimationCatalog.spec(for: .drawCard).loops,
+            "draw card animation plays once"
+        )
+
+        check(TarotDeck.cards.count == 44, "tarot deck carries 22 arcana and 22 reversed")
+        check(TarotDeck.cards.filter { !$0.isReversed }.count == 22, "22 upright arcana")
+        check(TarotDeck.cards.filter { $0.isReversed }.count == 22, "22 reversed arcana")
+        check(Set(TarotDeck.cards.map(\.id)).count == 44, "tarot card ids are unique")
+        check(
+            TarotDeck.cards.allSatisfy { $0.numeralIndex >= 0 && $0.numeralIndex < TarotDeck.arcanaCount },
+            "arcana indices stay in range"
+        )
+        check(
+            TarotDeck.cards.allSatisfy { !$0.nameZH.isEmpty && !$0.nameEN.isEmpty && !$0.pickupZH.isEmpty },
+            "tarot cards carry names and pickup quotes"
+        )
+        check(
+            TarotDeck.cards.allSatisfy { !$0.effectLines.isEmpty && $0.effectLines.allSatisfy { !$0.isEmpty } },
+            "tarot cards carry effect text"
+        )
+        check(
+            TarotDeck.cards.filter { $0.isReversed }.allSatisfy { $0.unlock != nil },
+            "reversed cards document their unlock condition"
+        )
+        check(TarotDeck.cards[0].iconResource == "Tarot00", "upright icon resource naming")
+        check(
+            TarotDeck.card(numeralIndex: 21, reversed: true)?.iconResource == "TarotReversed21",
+            "reversed icon resource naming"
+        )
+        check(
+            TarotDeck.card(numeralIndex: 5, reversed: false) == TarotDeck.cards[5],
+            "deck lookup finds the upright card"
+        )
+        check(TarotDrawPolicy.draw(random: { 0.999 }).id == "normal-21", "high draw stays upright")
+        check(TarotDrawPolicy.draw(random: { 0.24 }).isReversed, "low draw reverses the card")
+        var drawSequence = [0.1, 0.999]
+        let seededDraw = TarotDrawPolicy.draw(random: { drawSequence.removeFirst() })
+        check(seededDraw.id == "reversed-21", "seeded draw picks the requested card")
+        let uprightCard = TarotDeck.cards[0]
+        check(
+            TarotDrawPolicy.displayTitle(for: uprightCard) == uprightCard.nameZH,
+            "upright title is the plain name"
+        )
+        check(
+            TarotDrawPolicy.displayTitle(for: seededDraw).hasPrefix("逆位"),
+            "reversed title marks the inversion"
+        )
+        check(
+            TarotDrawPolicy.effectText(for: uprightCard) == uprightCard.effectLines.joined(separator: "\n"),
+            "effect text joins the effect lines"
+        )
+        check(TarotDrawPolicy.cardPanelDisplayDuration > 3, "card panel stays readable")
+
         let todoNow = Date(timeIntervalSince1970: 1_000)
         let earlyTodo = TodoItem(
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,

@@ -17,6 +17,7 @@ struct PetAppearanceDefinition {
     /// Helper atlases a role derives for itself. `nil` falls back to the Isaac ones.
     let shootingAtlasResource: String?
     let verticalWalkingResource: String?
+    let raisingAtlasResource: String?
     let subdirectory: String?
 }
 
@@ -49,6 +50,7 @@ enum PetAppearanceCatalog {
             spriteSheetResource: "spritesheet",
             shootingAtlasResource: nil,
             verticalWalkingResource: nil,
+            raisingAtlasResource: nil,
             subdirectory: nil
         ),
         PetAppearanceDefinition(
@@ -58,6 +60,7 @@ enum PetAppearanceCatalog {
             spriteSheetResource: "magdalene-spritesheet",
             shootingAtlasResource: "magdalene-shooting-atlas",
             verticalWalkingResource: "magdalene-walking-vertical-atlas",
+            raisingAtlasResource: "magdalene-raising-atlas",
             subdirectory: "Agents"
         ),
         PetAppearanceDefinition(
@@ -67,6 +70,7 @@ enum PetAppearanceCatalog {
             spriteSheetResource: "judas-spritesheet",
             shootingAtlasResource: nil,
             verticalWalkingResource: nil,
+            raisingAtlasResource: nil,
             subdirectory: "Agents"
         ),
     ]

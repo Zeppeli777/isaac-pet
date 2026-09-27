@@ -1,6 +1,7 @@
 import AppKit
 import IsaacPetCore
 
+
 @MainActor
 final class SpriteFrame {
     let cgImage: CGImage
@@ -43,10 +44,14 @@ final class SpriteAtlas {
         case missingVerticalWalkingResource
         case invalidVerticalWalkingImage
         case invalidVerticalWalkingDimensions(Int, Int)
+        case missingRaisingResource
+        case invalidRaisingImage
+        case invalidRaisingDimensions(Int, Int)
         case invalidDimensions(Int, Int)
         case cropFailed(Int, Int)
         case shootingCropFailed(Int)
         case verticalWalkingCropFailed(Int, Int)
+        case raisingCropFailed(Int)
 
         var errorDescription: String? {
             switch self {
@@ -64,10 +69,14 @@ final class SpriteAtlas {
             case .missingVerticalWalkingResource: "找不到 walking-vertical-atlas.webp。"
             case .invalidVerticalWalkingImage: "无法解码 Isaac 上下行走姿态。"
             case let .invalidVerticalWalkingDimensions(width, height): "上下行走姿态尺寸错误：\(width)×\(height)。"
+            case .missingRaisingResource: "找不到 raising-atlas.webp。"
+            case .invalidRaisingImage: "无法解码举卡姿态。"
+            case let .invalidRaisingDimensions(width, height): "举卡姿态尺寸错误：\(width)×\(height)。"
             case let .invalidDimensions(width, height): "动画图集尺寸错误：\(width)×\(height)。"
             case let .cropFailed(row, column): "无法读取动画单元格 \(row),\(column)。"
             case let .shootingCropFailed(column): "无法读取射击姿态 \(column)。"
             case let .verticalWalkingCropFailed(row, column): "无法读取上下行走姿态 \(row),\(column)。"
+            case let .raisingCropFailed(column): "无法读取举卡姿态 \(column)。"
             }
         }
     }
@@ -80,10 +89,12 @@ final class SpriteAtlas {
     private let source: CGImage
     private let shootingSource: CGImage
     private let verticalWalkingSource: CGImage
+    private let raisingSource: CGImage
     private let bundle: Bundle
     private var cache: [Cell: SpriteFrame] = [:]
     private var shootingCache: [Int: SpriteFrame] = [:]
     private var verticalWalkingCache: [Cell: SpriteFrame] = [:]
+    private var raisingCache: [Int: SpriteFrame] = [:]
     private var cachedTear: SpriteFrame?
     private var cachedTearDrop: SpriteFrame?
     private var emoteCache: [EmoteID: SpriteFrame] = [:]
@@ -93,7 +104,8 @@ final class SpriteAtlas {
         spriteSheetResource: String = "spritesheet",
         spriteSheetSubdirectory: String? = nil,
         shootingAtlasResource: String? = nil,
-        verticalWalkingResource: String? = nil
+        verticalWalkingResource: String? = nil,
+        raisingAtlasResource: String? = nil
     ) throws {
         guard let url = bundle.url(
             forResource: spriteSheetResource,
@@ -139,9 +151,23 @@ final class SpriteAtlas {
               verticalWalking.height == expectedVerticalWalkingHeight else {
             throw AtlasError.invalidVerticalWalkingDimensions(verticalWalking.width, verticalWalking.height)
         }
+        let raising = try Self.helperImage(
+            bundle: bundle,
+            resource: raisingAtlasResource ?? "raising-atlas",
+            subdirectory: raisingAtlasResource == nil ? nil : spriteSheetSubdirectory,
+            missing: .missingRaisingResource,
+            invalid: .invalidRaisingImage
+        )
+        let expectedRaisingWidth = AnimationCatalog.cellWidth * AnimationCatalog.raisingColumns
+        let expectedRaisingHeight = AnimationCatalog.cellHeight * AnimationCatalog.raisingRows
+        guard raising.width == expectedRaisingWidth,
+              raising.height == expectedRaisingHeight else {
+            throw AtlasError.invalidRaisingDimensions(raising.width, raising.height)
+        }
         self.source = source
         self.shootingSource = shooting
         self.verticalWalkingSource = verticalWalking
+        self.raisingSource = raising
         self.bundle = bundle
     }
 
@@ -205,6 +231,24 @@ final class SpriteAtlas {
         }
         let frame = SpriteFrame(cgImage: crop)
         verticalWalkingCache[cell] = frame
+        return frame
+    }
+
+    func frame(raising index: Int) throws -> SpriteFrame {
+        let spec = AnimationCatalog.spec(for: .drawCard)
+        let column = min(max(index, 0), spec.frameCount - 1)
+        if let cached = raisingCache[column] { return cached }
+        let rect = CGRect(
+            x: column * AnimationCatalog.cellWidth,
+            y: 0,
+            width: AnimationCatalog.cellWidth,
+            height: AnimationCatalog.cellHeight
+        )
+        guard let crop = raisingSource.cropping(to: rect) else {
+            throw AtlasError.raisingCropFailed(column)
+        }
+        let frame = SpriteFrame(cgImage: crop)
+        raisingCache[column] = frame
         return frame
     }
 
