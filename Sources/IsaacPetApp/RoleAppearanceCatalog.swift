@@ -6,20 +6,13 @@ enum PetAppearanceID: String, CaseIterable {
     case isaac
     case magdalene
     case judas
-
-    init?(roleID: AgentRoleID) {
-        switch roleID {
-        case .isaac: self = .isaac
-        case .magdalene: self = .magdalene
-        case .judas: self = .judas
-        case .cain: return nil
-        }
-    }
 }
 
 struct PetAppearanceDefinition {
     let id: PetAppearanceID
     let displayName: String
+    /// Short name used in conversation UI and the pet's persona prompt.
+    let personaName: String
     let spriteSheetResource: String
     /// Helper atlases a role derives for itself. `nil` falls back to the Isaac ones.
     let shootingAtlasResource: String?
@@ -52,6 +45,7 @@ enum PetAppearanceCatalog {
         PetAppearanceDefinition(
             id: .isaac,
             displayName: "Isaac（默认）",
+            personaName: "Isaac",
             spriteSheetResource: "spritesheet",
             shootingAtlasResource: nil,
             verticalWalkingResource: nil,
@@ -60,6 +54,7 @@ enum PetAppearanceCatalog {
         PetAppearanceDefinition(
             id: .magdalene,
             displayName: "Magdalene",
+            personaName: "Magdalene",
             spriteSheetResource: "magdalene-spritesheet",
             shootingAtlasResource: "magdalene-shooting-atlas",
             verticalWalkingResource: "magdalene-walking-vertical-atlas",
@@ -68,6 +63,7 @@ enum PetAppearanceCatalog {
         PetAppearanceDefinition(
             id: .judas,
             displayName: "Judas",
+            personaName: "Judas",
             spriteSheetResource: "judas-spritesheet",
             shootingAtlasResource: nil,
             verticalWalkingResource: nil,
@@ -103,21 +99,5 @@ enum PetAppearanceCatalog {
 
     static func isAvailable(_ id: PetAppearanceID, bundle: Bundle = .main) -> Bool {
         availability(id, bundle: bundle).isAvailable
-    }
-}
-
-enum AgentPortraitCatalog {
-    static func image(for roleID: AgentRoleID, bundle: Bundle = .main) -> NSImage? {
-        switch roleID {
-        case .magdalene:
-            guard let url = bundle.url(
-                forResource: "magdalene-portrait",
-                withExtension: "png",
-                subdirectory: "Agents"
-            ) else { return nil }
-            return NSImage(contentsOf: url)
-        case .isaac, .cain, .judas:
-            return nil
-        }
     }
 }

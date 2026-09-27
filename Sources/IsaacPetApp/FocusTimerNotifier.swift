@@ -1,14 +1,17 @@
 import Foundation
 import UserNotifications
 
+/// Schedules the local notification fired when a focus countdown finishes. Each
+/// countdown owns a session ID so a cancel can retract the request even while a
+/// macOS permission dialog is still pending.
 @MainActor
-final class AgentReminderCoordinator {
-    private static let identifierPrefix = "isaac-pet.agent.focus."
+final class FocusTimerNotifier {
+    private static let identifierPrefix = "isaac-pet.focus."
     private let center = UNUserNotificationCenter.current()
-    private var cancelledTaskIDs: Set<UUID> = []
+    private var cancelledSessionIDs: Set<UUID> = []
 
-    func scheduleFocusCompletion(taskID: UUID, target: String?, deadline: Date) async throws -> Bool {
-        cancelledTaskIDs.remove(taskID)
+    func scheduleCompletion(sessionID: UUID, target: String?, deadline: Date) async throws -> Bool {
+        cancelledSessionIDs.remove(sessionID)
         let settings = await center.notificationSettings()
         let isAuthorized: Bool
         switch settings.authorizationStatus {
@@ -21,17 +24,17 @@ final class AgentReminderCoordinator {
         @unknown default:
             isAuthorized = false
         }
-        guard isAuthorized, !cancelledTaskIDs.contains(taskID) else { return false }
+        guard isAuthorized, !cancelledSessionIDs.contains(sessionID) else { return false }
 
-        removeFocusCompletion(taskID: taskID)
+        removePending(sessionID: sessionID)
         let remaining = max(1, deadline.timeIntervalSinceNow)
         let content = UNMutableNotificationContent()
-        content.title = "Judas：专注结束"
+        content.title = "专注结束"
         content.body = target.map { "你完成了一个专注时段：\($0)" } ?? "你完成了一个专注时段，起来休息一下吧。"
         content.sound = .default
-        content.userInfo = ["agentTaskID": taskID.uuidString]
+        content.userInfo = ["focusSessionID": sessionID.uuidString]
         let request = UNNotificationRequest(
-            identifier: Self.identifierPrefix + taskID.uuidString,
+            identifier: Self.identifierPrefix + sessionID.uuidString,
             content: content,
             trigger: UNTimeIntervalNotificationTrigger(timeInterval: remaining, repeats: false)
         )
@@ -39,9 +42,9 @@ final class AgentReminderCoordinator {
         return true
     }
 
-    func removeFocusCompletion(taskID: UUID) {
-        cancelledTaskIDs.insert(taskID)
-        let identifier = Self.identifierPrefix + taskID.uuidString
+    func removePending(sessionID: UUID) {
+        cancelledSessionIDs.insert(sessionID)
+        let identifier = Self.identifierPrefix + sessionID.uuidString
         center.removePendingNotificationRequests(withIdentifiers: [identifier])
     }
 }
