@@ -3,22 +3,21 @@ import QuartzCore
 
 @MainActor
 final class TearProjectile {
-    /// Isaac ties a tear's arc to its shot speed: it leaves the muzzle at a fraction of
-    /// the travel speed and gravity pulls it back down, so faster tears fly a longer,
-    /// flatter path and land further away.
-    private static let launchSpeedFactor: CGFloat = 0.5
-    private static let gravity: CGFloat = 290
-    /// How much the tear shrinks at the top of its arc, where it is furthest away.
-    private static let peakShrink: CGFloat = 0.18
+    /// Per the tear mechanics the wiki describes, a tear leaves the muzzle with no
+    /// upward rate: its height starts at the character's tear height and gravity pulls
+    /// it down from there, so the flight reads as a flat line that drops near its end.
+    private static let gravity: CGFloat = 120
+    /// How far below the launch line the tear falls before it bursts.
+    private static let dropBudget: CGFloat = 80
 
     private let panel: NSPanel
     private let velocity: CGVector
     private let center: NSPoint
     private let baseSize: CGFloat
-    private let peakHeight: CGFloat
+    private let dropBudget: CGFloat
     private var elapsed: TimeInterval = 0
     private let gravity: CGFloat
-    private var verticalVelocity: CGFloat
+    private var verticalVelocity: CGFloat = 0
     private var height: CGFloat = 0
     private(set) var landed = false
 
@@ -34,9 +33,8 @@ final class TearProjectile {
         self.velocity = velocity
         self.center = center
         baseSize = size
-        verticalVelocity = hypot(velocity.dx, velocity.dy) * Self.launchSpeedFactor
         gravity = Self.gravity * scale
-        peakHeight = verticalVelocity * verticalVelocity / (2 * gravity)
+        dropBudget = Self.dropBudget * scale
 
         let rect = NSRect(
             x: center.x - size / 2,
@@ -67,14 +65,13 @@ final class TearProjectile {
         elapsed += delta
         verticalVelocity -= gravity * delta
         height += verticalVelocity * delta
-        // The arc is the range: the tear bursts once gravity brings it back down.
-        if height <= 0, verticalVelocity < 0 {
+        // The drop is the range: the tear bursts once it has sunk below its launch line.
+        if -height >= dropBudget {
             landed = true
             return
         }
         let time = CGFloat(elapsed)
-        let scale = 1 - Self.peakShrink * min(1, max(0, height / peakHeight))
-        let size = baseSize * scale
+        let size = baseSize
         let origin = NSPoint(
             x: center.x + velocity.dx * time - size / 2,
             y: center.y + velocity.dy * time + height - size / 2
