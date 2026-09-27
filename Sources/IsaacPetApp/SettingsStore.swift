@@ -12,6 +12,8 @@ final class SettingsStore {
         static let appleReminderCalendar = "integration.appleReminders.calendarIdentifier"
         static let notionDataSource = "integration.notion.dataSourceIdentifier"
         static let activeAppearance = "pet.activeAppearance"
+        static let focusDeadline = "focus.session.deadline"
+        static let focusTarget = "focus.session.target"
     }
 
     private let defaults: UserDefaults
@@ -54,5 +56,16 @@ final class SettingsStore {
     var activeAppearance: String {
         get { defaults.string(forKey: Key.activeAppearance) ?? PetAppearanceID.isaac.rawValue }
         set { defaults.set(newValue, forKey: Key.activeAppearance) }
+    }
+
+    /// Persists the running focus countdown so it can resume after a relaunch.
+    var focusDeadline: Date? {
+        get { defaults.object(forKey: Key.focusDeadline) as? Date }
+        set { defaults.set(newValue, forKey: Key.focusDeadline) }
+    }
+
+    var focusTarget: String? {
+        get { defaults.string(forKey: Key.focusTarget) }
+        set { defaults.set(newValue, forKey: Key.focusTarget) }
     }
 }

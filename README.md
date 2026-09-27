@@ -19,7 +19,8 @@
 - 到期任务会通过 Isaac 气泡提醒；授权后也会发送 macOS 系统通知
 - 可手动从 Apple“提醒事项”导入指定列表，并按系统条目 ID 去重更新
 - 可手动从 Notion data source 导入任务，访问令牌只保存在 macOS 钥匙串
-- 内置 Agent 中心：查看角色能力、任务状态与审计记录，并运行 Isaac Planner、Magdalene 节奏检查与 Judas 专注/确认式 Todo 创建
+- 内置专注计时：15/25/45 分钟本机倒计时，支持目标、取消、完成弹窗与系统通知，重启后自动恢复
+- 角色皮肤只改变外观与对话人格：切换形象后，“问桌宠（LLM）”会使用对应角色的系统提示词
 - 记忆大小、走动开关、屏幕和横向位置
 - 可选登录时启动，不显示 Dock 图标，菜单栏保留 Isaac 入口
 - 默认本地独立运行；只有手动同步 Notion 或主动使用 LLM 时才访问对应服务，不收集遥测
@@ -27,7 +28,7 @@
 ## 平台状态
 
 - macOS 13+：已实现，使用 Swift 6 和 AppKit
-- Windows 10/11：初步移植（.NET 8 + WPF），见 [Windows/README.md](Windows/README.md)。核心桌宠、游玩模式、Todo、LLM 对话已可用；Notion 同步与 Agent 中心尚未移植
+- Windows 10/11：初步移植（.NET 8 + WPF），见 [Windows/README.md](Windows/README.md)。核心桌宠、游玩模式、Todo、LLM 对话已可用；Notion 同步与专注计时尚未移植
 
 ## 系统要求
 
@@ -68,12 +69,12 @@ scripts/install_app.sh
 - 拖拽 Isaac：移动到另一个位置或屏幕，松手后停在该屏幕底部
 - 右键 Isaac：打开动作与设置菜单
 - 对话气泡：从右键或菜单栏菜单选择随机文字、颜文字或“自定义气泡…”
-- LLM：先从“LLM 设置…”填写 Base URL、API Key、模型并保存，再用“问 Isaac（LLM）…”主动发送单条问题
+- LLM：先从“LLM 设置…”填写 Base URL、API Key、模型并保存，再用“问 {当前形象}（LLM）…”主动发送单条问题
 - Todo：从菜单进入“新建 Todo…”、“查看 Todo…”或“查看今日计划…”。今日计划只读本机 Todo，按逾期、今天到期、后续到期、无日期的顺序给出最多三项重点，也可以让 Isaac 显示下一项
 - Apple 提醒事项：从 Todo 子菜单选择“从 Apple 提醒事项同步…”，授权后选择一个列表或全部列表
 - Notion：从 Todo 子菜单进入“Notion 设置…”，保存 internal integration token 与 data source ID 后手动同步
-- Agents：打开 Agent 中心查看角色权限；Isaac 生成今日计划，Magdalene 检查任务节奏，Judas 启动本地专注计时或提出创建 Todo（必须再次确认）
-- 桌宠形象：从“桌宠形象”子菜单切换已安装角色图集；运行 Agent 时会临时切换对应角色，任务结束、取消或失败后恢复你的选择
+- 专注计时：从“专注计时”子菜单选择“开始专注计时…”，填写可选目标与时长；运行中可在同一子菜单查看剩余时间并取消
+- 桌宠形象：从“桌宠形象”子菜单切换已安装角色图集；形象同时决定 LLM 对话的人格提示词，不会改变任何功能权限
 - 菜单栏 Isaac 图标：随时打开同一个菜单
 - 游玩模式：WASD 连续移动，方向键可按住连发泪弹，Esc 退出并恢复桌宠行为
 - 游玩模式行走：A/D 使用左右步态；W 使用后脑勺和背面身体步态，S 使用正脸和正面身体步态
@@ -109,7 +110,7 @@ Notion 同步同样采用手动只读模式：
 
 ## 可选 LLM 对话
 
-LLM 默认关闭，不影响本地气泡、Todo 或 Agent：
+LLM 默认关闭，不影响本地气泡、Todo 或专注计时：
 
 - “LLM 设置…”中填写 Base URL、API Key 和模型 ID，并选择 API 格式：OpenAI 兼容（发往 `{Base URL}/chat/completions`）或 Anthropic 兼容（发往 `{Base URL}/v1/messages`）。兼容任意自建或第三方服务，本地服务可以把 API Key 留空。
 - 连接配置保存在本机文件（权限 600），不使用 macOS 钥匙串，读取时不会出现系统授权弹窗：
@@ -119,40 +120,19 @@ LLM 默认关闭，不影响本地气泡、Todo 或 Agent：
   ```
 
 - 弹窗里的“导入配置文件…”可以导入上面格式的 JSON；`apiFormat` 支持 `openai` / `anthropic`，缺省时按 Base URL 推断。测试时可用环境变量 `ISAAC_LLM_CONFIG_PATH` 重定向该文件。
-- 只有点击“问 Isaac（LLM）…”并确认发送时，当前输入才会发往所配置的服务；请求不会附带 Todo、Notion 内容、文件、桌面数据或历史对话，也不开放任何模型工具。
+- 只有点击“问 {当前形象}（LLM）…”并确认发送时，当前输入才会发往所配置的服务；请求不会附带 Todo、Notion 内容、文件、桌面数据或历史对话，也不开放任何模型工具。
 - 30 秒超时，可从菜单取消；回答经过 80 字气泡长度限制。
 - “断开 LLM”会删除配置文件，本地功能继续可用。旧版本保存在钥匙串里的 OpenAI API Key 不再被读取，如需清理可在“钥匙串访问”中搜索 `com.fanmade.isaacpet.openai` 删除。
 
-## Agent 安全模型
+## 专注计时与人格
 
-Agent 中心当前包含四个角色档案：Isaac、Magdalene、Cain 和 Judas。角色名称代表职责与未来视觉形象，但不会绕过工具权限：
+专注计时完全在本机运行：从“专注计时”子菜单开始一个 15/25/45 分钟倒计时，可填写可选目标；运行中菜单会显示剩余时间，可随时取消；结束时弹窗提醒，并在授权后发送系统通知。倒计时状态保存在本机设置中，应用重启后会自动恢复未结束的时段。
 
-- 读取本地 Todo：只有角色显式声明后才可自动执行。
-- 修改本地 Todo、读取外部任务：即使角色声明，也必须在动作发生前确认。
-- 修改外部任务、联网研究、运行命令：初始版本没有安装执行适配器，界面显示“未开放”。
-- Agent 输出只能作为受限文本进入气泡或结果窗口，不能直接控制桌面窗口和系统工具。
-
-目前有三项自动本地工作流和一项确认式写入工作流：
-
-- Isaac Planner 按逾期、今天到期、未来到期和无日期任务排序，最多给出三项行动建议。
-- Magdalene 节奏检查根据逾期、今日到期和待办总量给出喝水、活动和专注/休息节奏建议。
-- Judas 专注计时在本机运行 15/25/45 分钟倒计时，可填写专注目标；支持取消、完成弹窗和系统通知。
-- Judas 创建 Todo 会先写入一条 `awaitingConfirmation` 审计记录，明确展示将新增的本地任务；只有用户再次点击“创建 Todo”后才会写入。取消不会修改 Todo。
-
-前三项自动工作流都不会调用 LLM、访问网络或修改 Todo；Judas 的 Todo 写入仅限本机，并且必须经过该次操作的明确确认。LLM 对话是独立、用户主动触发的数据路径；Cain 仍只显示角色档案，联网研究尚未开放。
-
-任务及审计日志保存在：
-
-```text
-~/Library/Application Support/Isaac Pet/Agents/tasks-v1.json
-~/Library/Application Support/Isaac Pet/Agents/audit-v1.jsonl
-```
-
-每个任务会记录排队、运行、等待确认、成功、失败或取消状态；状态机禁止已完成、失败或取消的任务重新运行，也禁止任务从排队直接跳到成功。日志不写 Todo 全文快照、Notion Token 或其他凭据。
+LLM 对话的人格提示词跟随当前桌宠形象：Isaac 天真爱哭，Magdalene 温柔体贴，Judas 机灵利落。人格只影响说话的语气，所有皮肤共享同样的能力边界——不能操作电脑、不调用工具、回答限 80 字，且只有用户主动提问时才联网。
 
 ## 多角色图集
 
-角色外观和 Agent 权限是两层独立机制：外观不会额外获得读取、写入、联网或命令权限。Isaac 是内置默认图集；其他角色需要单独通过图集 QA 后放入对应资源位置：
+角色外观是纯视觉层：切换皮肤不会获得或失去任何读取、写入、联网或命令权限，只会改变对话人格。Isaac 是内置默认图集；其他角色需要单独通过图集 QA 后放入对应资源位置：
 
 ```text
 Resources/Agents/magdalene-spritesheet.webp
@@ -170,9 +150,9 @@ MAG_PYTHON="/Users/zeppeli/.cache/codex-runtimes/codex-primary-runtime/dependenc
   Resources/Agents/magdalene-spritesheet.webp --require-v2
 ```
 
-原始角色图和 Golden Locks 条保存在 `Assets/Source/agents/`，不会被打进应用包。`magdalene-portrait.png` 仍供 Agent 中心使用。用户从菜单选择的外观会持久保存；Agent 的角色外观只是运行期间的临时覆盖，不会修改这项偏好。Magdalene 另有自己的射击和竖向行走辅助图集（`Resources/Agents/magdalene-shooting-atlas.webp`、`magdalene-walking-vertical-atlas.webp`），由同一个脚本派生；角色没有提供辅助图集时（如 Judas）仍安全回退 Isaac 的基础辅助图集。泪弹是共用的圆形道具。
+原始角色图和 Golden Locks 条保存在 `Assets/Source/agents/`，不会被打进应用包。用户从菜单选择的外观会持久保存，同时决定对话人格；Magdalene 另有自己的射击和竖向行走辅助图集（`Resources/Agents/magdalene-shooting-atlas.webp`、`magdalene-walking-vertical-atlas.webp`），由同一个脚本派生；角色没有提供辅助图集时（如 Judas）仍安全回退 Isaac 的基础辅助图集。泪弹是共用的圆形道具。
 
-需要从终端或自动化工具直接打开界面时，可传入 `--show-todos`、`--show-daily-plan`、`--show-notion-settings`、`--show-llm-settings` 或 `--show-agents`。测试时可用 `ISAAC_AGENT_DATA_DIR` 指向隔离的审计目录。
+需要从终端或自动化工具直接打开界面时，可传入 `--show-todos`、`--show-daily-plan`、`--show-notion-settings` 或 `--show-llm-settings`。测试专注计时时可用环境变量 `ISAAC_FOCUS_DURATION_SECONDS` 提供额外时长选项。
 
 ## 验证
 

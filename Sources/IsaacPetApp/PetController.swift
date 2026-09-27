@@ -19,19 +19,17 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private let emoteBubble = EmoteBubbleController()
     private let todoStore: TodoStore
     private let todoReminderCoordinator: TodoReminderCoordinator
-    private let agentReminderCoordinator: AgentReminderCoordinator
+    private let focusTimerNotifier = FocusTimerNotifier()
     private let appleRemindersAdapter: AppleRemindersAdapter
     private let notionTodoAdapter: NotionTodoAdapter
     private let notionCredentialStore: NotionCredentialStore
     private let llmConfigStore = LLMConfigFileStore()
     private let llmClient: any LLMReplyProvider
-    private let agentAuditStore: AgentAuditStore
     private let menu = NSMenu(title: "Isaac Pet")
     private let statusItem: NSStatusItem
 
     private var settings: PetSettings
     private var activeAppearance: PetAppearanceID
-    private var preferredAppearance: PetAppearanceID
     private var state: PetState = .idle
     private var stateStartedAt = ProcessInfo.processInfo.systemUptime
     private var actionEndsAt: TimeInterval?
@@ -54,15 +52,14 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private var keyEventMonitor: Any?
     private var todoWindowController: TodoWindowController?
     private var dailyPlanWindowController: DailyPlanWindowController?
-    private var agentWindowController: AgentWindowController?
-    private var activeAgentTask: Task<Void, Never>?
-    private var activeAgentTaskID: UUID?
+    private var activeFocusTask: Task<Void, Never>?
+    private var focusSessionID: UUID?
+    private var focusDeadline: Date?
     private var todoSyncTask: Task<Void, Never>?
     private var appleRemindersSyncTask: Task<Void, Never>?
     private var notionSyncTask: Task<Void, Never>?
     private var llmTask: Task<Void, Never>?
     private var nextTodoCheckAt = ProcessInfo.processInfo.systemUptime + 0.75
-    private var nextAgentUIRefreshAt = ProcessInfo.processInfo.systemUptime
     private var didExplainNotificationDenial = false
 
     init(atlas: SpriteAtlas, settingsStore: SettingsStore) throws {
@@ -70,7 +67,6 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         self.settingsStore = settingsStore
         settings = settingsStore.load()
         activeAppearance = PetAppearanceID(rawValue: settingsStore.activeAppearance) ?? .isaac
-        preferredAppearance = activeAppearance
         if activeAppearance != .isaac {
             let definition = PetAppearanceCatalog.definition(for: activeAppearance)
             if PetAppearanceCatalog.availability(activeAppearance).isAvailable {
@@ -82,7 +78,6 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
                 )
             } else {
                 activeAppearance = .isaac
-                preferredAppearance = .isaac
                 settingsStore.activeAppearance = PetAppearanceID.isaac.rawValue
             }
         }
@@ -97,12 +92,10 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         speechBubble = SpeechBubbleController()
         todoStore = try TodoStore()
         todoReminderCoordinator = TodoReminderCoordinator()
-        agentReminderCoordinator = AgentReminderCoordinator()
         appleRemindersAdapter = AppleRemindersAdapter()
         notionTodoAdapter = NotionTodoAdapter()
         notionCredentialStore = NotionCredentialStore()
         llmClient = HTTPLLMClient()
-        agentAuditStore = try AgentAuditStore()
         panel = PetPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -122,7 +115,6 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             panel.orderFrontRegardless()
             let toolWindows = [
                 todoWindowController?.window,
-                agentWindowController?.window,
                 dailyPlanWindowController?.window,
             ]
             if !toolWindows.contains(where: { $0?.isVisible == true }) {
@@ -130,7 +122,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             }
         }
         startTimer()
-        restoreActiveAgentTask()
+        restoreFocusSession()
         synchronizeTodoReminders()
         if CommandLine.arguments.contains("--show-todos") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
@@ -149,10 +141,6 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         } else if CommandLine.arguments.contains("--show-llm-settings") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                 self?.configureLLM()
-            }
-        } else if CommandLine.arguments.contains("--show-agents") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-                self?.showAgentCenter()
             }
         }
     }
@@ -204,17 +192,13 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         menu.addItem(todoRoot)
         menu.addItem(.separator())
 
-        let agentMenu = NSMenu(title: "Agents")
-        agentMenu.addItem(item("打开 Agent 中心…", action: #selector(showAgentCenter), tag: 500))
-        agentMenu.addItem(item("Isaac：生成今日计划", action: #selector(runDailyPlanAgent), tag: 501))
-        agentMenu.addItem(item("Magdalene：检查今日节奏", action: #selector(runWellbeingAgent), tag: 503))
-        agentMenu.addItem(item("Judas：开始专注", action: #selector(runFocusAgent), tag: 504))
-        agentMenu.addItem(item("Judas：创建 Todo（需确认）", action: #selector(requestTodoWithJudas), tag: 505))
-        agentMenu.addItem(item("取消当前 Agent 任务", action: #selector(cancelActiveAgentTask), tag: 502))
-        let agentRoot = NSMenuItem(title: "Agents", action: nil, keyEquivalent: "")
-        agentRoot.tag = 510
-        menu.setSubmenu(agentMenu, for: agentRoot)
-        menu.addItem(agentRoot)
+        let focusMenu = NSMenu(title: "专注计时")
+        focusMenu.addItem(item("开始专注计时…", action: #selector(startFocusTimer), tag: 520))
+        focusMenu.addItem(item("取消专注计时", action: #selector(cancelFocusTimer), tag: 521))
+        let focusRoot = NSMenuItem(title: "专注计时", action: nil, keyEquivalent: "")
+        focusRoot.tag = 510
+        menu.setSubmenu(focusMenu, for: focusRoot)
+        menu.addItem(focusRoot)
         menu.addItem(.separator())
 
         let appearanceMenu = NSMenu(title: "桌宠形象")
@@ -291,6 +275,8 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         // LLM actions below.
         menu.item(withTag: 120)?.isEnabled = !isPlayMode && llmConfigured
         menu.item(withTag: 121)?.isEnabled = !isPlayMode && llmTask != nil
+        let personaName = PetAppearanceCatalog.definition(for: activeAppearance).personaName
+        menu.item(withTag: 118)?.title = "问 \(personaName)（LLM）…"
         let pendingTodoCount = TodoPolicy.pending(todoStore.items).count
         menu.item(withTag: 400)?.title = pendingTodoCount == 0 ? "Todo" : "Todo（\(pendingTodoCount)）"
         menu.item(withTag: 200)?.state = SMAppService.mainApp.status == .enabled ? .on : .off
@@ -303,14 +289,20 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             if item.tag == 407 {
                 item.isEnabled = !isPlayMode && settingsStore.notionDataSourceIdentifier != nil
             }
-            if [500, 501, 503, 504, 505].contains(item.tag) {
-                item.isEnabled = !isPlayMode && (item.tag == 500 || activeAgentTask == nil)
+            if item.tag == 520 { item.isEnabled = !isPlayMode && activeFocusTask == nil }
+            if item.tag == 521 {
+                item.isEnabled = !isPlayMode && activeFocusTask != nil
+                if let deadline = focusDeadline {
+                    let remaining = FocusSessionPolicy.clockText(
+                        remainingSeconds: FocusSessionPolicy.remainingSeconds(until: deadline)
+                    )
+                    item.title = "取消专注计时（剩 \(remaining)）"
+                }
             }
-            if item.tag == 502 { item.isEnabled = !isPlayMode && activeAgentTask != nil }
             if item.tag == 600,
                let rawValue = item.representedObject as? String,
                let appearance = PetAppearanceID(rawValue: rawValue) {
-                item.state = appearance == preferredAppearance ? .on : .off
+                item.state = appearance == activeAppearance ? .on : .off
                 let availability = PetAppearanceCatalog.availability(appearance)
                 item.isEnabled = !isPlayMode && availability.isAvailable
                 if !item.isEnabled {
@@ -357,7 +349,6 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     @objc private func timerFired() {
         tick()
         checkDueTodos(now: ProcessInfo.processInfo.systemUptime)
-        refreshAgentUI(now: ProcessInfo.processInfo.systemUptime)
         updateSpeechBubbleAnchor()
         updateEmoteBubbleAnchor()
     }
@@ -371,10 +362,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         appleRemindersSyncTask?.cancel()
         notionSyncTask?.cancel()
         llmTask?.cancel()
-        activeAgentTask?.cancel()
+        activeFocusTask?.cancel()
         todoWindowController?.close()
         dailyPlanWindowController?.close()
-        agentWindowController?.close()
         speechBubble.stop()
         emoteBubble.stop()
     }
@@ -886,16 +876,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     }
 
     @discardableResult
-    private func activateAppearance(
-        _ appearance: PetAppearanceID,
-        announce: Bool,
-        persistUserSelection: Bool = true
-    ) -> Bool {
+    private func activateAppearance(_ appearance: PetAppearanceID, announce: Bool) -> Bool {
         if appearance == activeAppearance {
-            if persistUserSelection {
-                preferredAppearance = appearance
-                settingsStore.activeAppearance = appearance.rawValue
-            }
+            settingsStore.activeAppearance = appearance.rawValue
             return true
         }
         guard PetAppearanceCatalog.availability(appearance).isAvailable else {
@@ -914,10 +897,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
                 verticalWalkingResource: definition.verticalWalkingResource
             )
             activeAppearance = appearance
-            if persistUserSelection {
-                preferredAppearance = appearance
-                settingsStore.activeAppearance = appearance.rawValue
-            }
+            settingsStore.activeAppearance = appearance.rawValue
             currentFrameKey = ""
             showIdleFrame()
             if announce { showSpeech("已切换为 \(definition.displayName)。") }
@@ -926,18 +906,6 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             if announce { showSpeech("无法加载角色图集：\(error.localizedDescription)") }
             return false
         }
-    }
-
-    @discardableResult
-    private func activateAgentAppearance(for roleID: AgentRoleID) -> Bool {
-        guard let appearance = PetAppearanceID(roleID: roleID) else { return false }
-        if activateAppearance(appearance, announce: false, persistUserSelection: false) { return true }
-        return activateAppearance(.isaac, announce: false, persistUserSelection: false)
-    }
-
-    private func restorePreferredAppearance() {
-        guard activeAppearance != preferredAppearance else { return }
-        _ = activateAppearance(preferredAppearance, announce: false, persistUserSelection: false)
     }
 
     @objc private func wave() { perform(.wave) }
@@ -964,8 +932,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         guard !isPlayMode else { return }
         targetX = nil
 
+        let personaName = PetAppearanceCatalog.definition(for: activeAppearance).personaName
         guard let input = PixelDialog.prompt(
-            title: "让 Isaac 说什么？",
+            title: "让 \(personaName) 说什么？",
             message: "内容只会显示在本机桌面，不会上传。",
             placeholder: "输入文字或颜文字（最多 80 字）",
             confirmTitle: "显示气泡"
@@ -999,7 +968,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             title: "可选 LLM 连接",
             message: """
             配置只保存在本机文件 \(Self.abbreviatedHomePath(llmConfigStore.fileURL.path))，不会上传。\
-            只有你主动点击“问 Isaac”时，输入文字才会发送到上面配置的服务；不会发送 Todo、Notion 内容或桌面数据。
+            只有你主动点击「问桌宠（LLM）」时，输入文字才会发送到上面配置的服务；不会发送 Todo、Notion 内容或桌面数据。
             """,
             content: accessory,
             initialFirstResponder: accessory.initialFirstResponder,
@@ -1057,8 +1026,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             return
         }
 
+        let personaName = PetAppearanceCatalog.definition(for: activeAppearance).personaName
         guard let rawInput = PixelDialog.prompt(
-            title: "问 Isaac",
+            title: "问 \(personaName)",
             message: "下面的文字会发送到 \(config.endpointURL()?.host ?? "你配置的服务")；不会附带 Todo、Notion 内容、文件或历史对话。",
             placeholder: "输入一个问题（最多 500 字）",
             confirmTitle: "发送"
@@ -1076,7 +1046,8 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             do {
                 let answer = try await llmClient.respond(
                     to: boundedInput,
-                    config: config
+                    config: config,
+                    systemPrompt: PetPersona.systemPrompt(for: activeAppearance)
                 )
                 try Task.checkCancellation()
                 llmTask = nil
@@ -1351,162 +1322,8 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         )
     }
 
-    @objc private func showAgentCenter() {
-        guard !isPlayMode else { return }
-        targetX = nil
-        NSApp.activate(ignoringOtherApps: true)
-        agentWindow().present()
-    }
-
-    private func agentWindow() -> AgentWindowController {
-        if let agentWindowController { return agentWindowController }
-        let controller = AgentWindowController(
-            auditStore: agentAuditStore,
-            onRunRole: { [weak self] roleID in self?.runAgent(roleID: roleID) },
-            onRequestTodoProposal: { [weak self] in self?.requestTodoWithJudas() },
-            onCancelTask: { [weak self] id in self?.cancelAgentTask(id: id) }
-        )
-        agentWindowController = controller
-        return controller
-    }
-
-    @objc private func runDailyPlanAgent() {
-        runAgent(roleID: .isaac)
-    }
-
-    @objc private func runWellbeingAgent() {
-        runAgent(roleID: .magdalene)
-    }
-
-    @objc private func runFocusAgent() {
-        runAgent(roleID: .judas)
-    }
-
-    @objc private func requestTodoWithJudas() {
-        guard !isPlayMode, activeAgentTask == nil else { return }
-        let role = AgentCatalog.profile(for: .judas)
-        guard AgentExecutionPolicy.authorization(for: .writeLocalTodos, role: role) == .requiresConfirmation else {
-            showSpeech("Judas 当前没有创建 Todo 的权限。")
-            return
-        }
-
-        _ = activateAgentAppearance(for: .judas)
-        defer { restorePreferredAppearance() }
-
-        guard let rawTitle = PixelDialog.prompt(
-            title: "Judas 提议创建本地 Todo",
-            message: "先输入要创建的任务。下一步仍会要求你明确确认，Judas 不会自行写入。",
-            placeholder: "例如：整理报告大纲",
-            confirmTitle: "继续"
-        ) else { return }
-        guard let title = TodoPolicy.normalizedTitle(rawTitle) else {
-            showSpeech("Todo 标题不能为空。")
-            return
-        }
-        confirmJudasTodoProposal(title: title)
-    }
-
-    private func confirmJudasTodoProposal(title: String) {
-        do {
-            let task = try agentAuditStore.createTask(
-                roleID: .judas,
-                capability: .writeLocalTodos,
-                title: "创建 Todo：\(title)"
-            )
-            try agentAuditStore.transition(
-                taskID: task.id,
-                to: .awaitingConfirmation,
-                summary: "Judas 请求创建本地 Todo：\(title)"
-            )
-            agentWindowController?.reload()
-
-            let approved = PixelDialog.confirm(
-                title: "允许 Judas 创建本地 Todo？",
-                message: "将仅写入 Isaac Pet 的本地 Todo：\n\n\(title)\n\n不会修改 Apple 提醒事项、Notion 或其他应用。",
-                confirmTitle: "创建 Todo",
-                isDestructive: true
-            )
-            if !approved {
-                try agentAuditStore.transition(
-                    taskID: task.id,
-                    to: .cancelled,
-                    summary: "用户拒绝创建本地 Todo"
-                )
-                agentWindowController?.reload()
-                showSpeech("已取消创建 Todo。")
-                return
-            }
-
-            do {
-                _ = try todoStore.add(title: title, dueAt: nil)
-                try agentAuditStore.transition(
-                    taskID: task.id,
-                    to: .succeeded,
-                    summary: "已按用户确认创建本地 Todo：\(title)"
-                )
-                agentWindowController?.reload()
-                synchronizeTodoReminders()
-                showSpeech("Judas 已创建 Todo：\(title)")
-            } catch {
-                _ = try? agentAuditStore.transition(
-                    taskID: task.id,
-                    to: .failed,
-                    summary: "用户已确认，但本地 Todo 创建失败：\(error.localizedDescription)"
-                )
-                agentWindowController?.reload()
-                showSpeech("无法创建 Todo：\(error.localizedDescription)")
-            }
-        } catch {
-            showSpeech("无法创建 Todo：\(error.localizedDescription)")
-        }
-    }
-
-    private func runAgent(roleID: AgentRoleID) {
-        _ = activateAgentAppearance(for: roleID)
-        switch roleID {
-        case .isaac:
-            startReadOnlyAgent(
-                roleID: .isaac,
-                title: "读取本地 Todo 并生成今日计划",
-                runningSummary: "Isaac 正在只读分析本地 Todo",
-                runningSpeech: "Isaac Planner 正在整理今日计划…",
-                onFinished: { [weak self] in self?.restorePreferredAppearance() }
-            ) { [weak self] taskID in
-                guard let self else { return }
-                let plan = LocalPlanningAgent.makeDailyPlan(from: todoStore.items)
-                let result = ([plan.headline] + plan.steps).joined(separator: "\n")
-                try agentAuditStore.transition(taskID: taskID, to: .succeeded, summary: result)
-                presentDailyPlan(plan)
-                perform(.thumbsUp)
-                showSpeech(plan.headline)
-            }
-        case .magdalene:
-            startReadOnlyAgent(
-                roleID: .magdalene,
-                title: "读取本地 Todo 并检查今日节奏",
-                runningSummary: "Magdalene 正在只读评估今日任务密度",
-                runningSpeech: "Magdalene 正在看看今天的节奏…",
-                onFinished: { [weak self] in self?.restorePreferredAppearance() }
-            ) { [weak self] taskID in
-                guard let self else { return }
-                let plan = LocalWellbeingAgent.makeRhythmCheck(from: todoStore.items)
-                let result = ([plan.headline] + plan.suggestions).joined(separator: "\n")
-                try agentAuditStore.transition(taskID: taskID, to: .succeeded, summary: result)
-                presentWellbeingPlan(plan)
-                perform(.wave)
-                showSpeech(plan.headline)
-            }
-        case .judas:
-            presentFocusComposer()
-            if activeAgentTask == nil { restorePreferredAppearance() }
-        case .cain:
-            showSpeech("这个角色的工作流还没有开放。")
-            restorePreferredAppearance()
-        }
-    }
-
     private func presentFocusComposer() {
-        guard !isPlayMode, activeAgentTask == nil else { return }
+        guard !isPlayMode, activeFocusTask == nil else { return }
         let targetField = PixelStyledField()
         targetField.placeholderString = "可选，例如：完成报告初稿"
         let durationPopup = NSPopUpButton()
@@ -1539,8 +1356,8 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         for view in [targetLabel, targetField, durationLabel, durationPopup] { accessory.addSubview(view) }
 
         let result = PixelDialog.presentForm(
-            title: "Judas 专注计时",
-            message: "计时完全在本机运行。开始后可以在 Agent 中心查看剩余时间或随时取消。",
+            title: "专注计时",
+            message: "计时完全在本机运行。结束后会弹窗提醒；也可以随时在菜单里取消。",
             content: accessory,
             initialFirstResponder: targetField,
             buttons: [
@@ -1555,123 +1372,79 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         startFocusSession(target: target, duration: duration)
     }
 
+    @objc private func startFocusTimer() {
+        guard !isPlayMode, activeFocusTask == nil else { return }
+        targetX = nil
+        NSApp.activate(ignoringOtherApps: true)
+        presentFocusComposer()
+    }
+
+    @objc private func cancelFocusTimer() {
+        activeFocusTask?.cancel()
+    }
+
     private func startFocusSession(target: String?, duration: TimeInterval) {
-        guard !isPlayMode, activeAgentTask == nil else { return }
-        let role = AgentCatalog.profile(for: .judas)
-        let capability: AgentCapability = .focusTimer
-        guard AgentExecutionPolicy.authorization(for: capability, role: role) == .automatic else {
-            showSpeech("Judas 当前没有专注计时权限。")
-            return
-        }
+        guard !isPlayMode, activeFocusTask == nil else { return }
         let safeDuration = min(max(duration, 1), FocusSessionPolicy.maximumDuration)
         let deadline = Date().addingTimeInterval(safeDuration)
         let durationText = FocusSessionPolicy.durationText(safeDuration)
-        let subjectText = target.map { "：\($0)" } ?? ""
-        do {
-            let task = try agentAuditStore.createTask(
-                roleID: .judas,
-                capability: capability,
-                title: "专注 \(durationText)\(subjectText)",
-                deadlineAt: deadline,
-                subject: target
-            )
-            activeAgentTaskID = task.id
-            try agentAuditStore.transition(
-                taskID: task.id,
-                to: .running,
-                summary: "Judas 已开始本地专注计时（\(durationText)）"
-            )
-            agentWindowController?.reload()
-            perform(.observe)
-            showSpeech("专注开始！\(durationText)后见。")
-            beginFocusCountdown(taskID: task.id, deadline: deadline, target: target)
-        } catch {
-            showSpeech("无法开始专注：\(error.localizedDescription)")
-        }
+        focusSessionID = UUID()
+        focusDeadline = deadline
+        settingsStore.focusDeadline = deadline
+        settingsStore.focusTarget = target
+        perform(.observe)
+        showSpeech("专注开始！\(durationText)后见。")
+        beginFocusCountdown(deadline: deadline, target: target)
     }
 
-    private func beginFocusCountdown(taskID: UUID, deadline: Date, target: String?) {
-        activeAgentTask = Task { @MainActor [weak self] in
+    private func beginFocusCountdown(deadline: Date, target: String?) {
+        guard let sessionID = focusSessionID else { return }
+        focusDeadline = deadline
+        activeFocusTask = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                _ = Task { [agentReminderCoordinator] in
-                    try? await agentReminderCoordinator.scheduleFocusCompletion(
-                        taskID: taskID, target: target, deadline: deadline
+                // The notification request runs independently so a pending macOS
+                // permission dialog cannot block the local countdown.
+                _ = Task { [focusTimerNotifier] in
+                    try? await focusTimerNotifier.scheduleCompletion(
+                        sessionID: sessionID, target: target, deadline: deadline
                     )
                 }
                 try await FocusSessionTimer.wait(until: deadline)
-                let result = target.map { "专注完成：\($0)" } ?? "专注时段已完成"
-                _ = try agentAuditStore.transition(taskID: taskID, to: .succeeded, summary: result)
-                finishAgentTask()
+                clearFocusSession()
                 presentFocusCompletion(target: target)
                 perform(.thumbsUp)
                 showSpeech("专注完成！起来休息一下吧。")
-                restorePreferredAppearance()
             } catch is CancellationError {
-                // The notification request runs independently so a pending macOS permission
-                // dialog cannot block cancellation of the local countdown.
-                agentReminderCoordinator.removeFocusCompletion(taskID: taskID)
-                _ = try? agentAuditStore.transition(taskID: taskID, to: .cancelled, summary: "用户取消了专注计时")
-                activeAgentTask = nil
-                activeAgentTaskID = nil
-                agentWindowController?.reload()
+                focusTimerNotifier.removePending(sessionID: sessionID)
+                clearFocusSession()
                 showSpeech("专注计时已取消。")
-                restorePreferredAppearance()
             } catch {
-                agentReminderCoordinator.removeFocusCompletion(taskID: taskID)
-                _ = try? agentAuditStore.transition(taskID: taskID, to: .failed, summary: error.localizedDescription)
-                activeAgentTask = nil
-                activeAgentTaskID = nil
-                agentWindowController?.reload()
+                focusTimerNotifier.removePending(sessionID: sessionID)
+                clearFocusSession()
                 showSpeech("专注计时失败：\(error.localizedDescription)")
-                restorePreferredAppearance()
             }
         }
     }
 
-    private func restoreActiveAgentTask() {
-        var resumedFocus = false
-        let now = Date()
-        for task in agentAuditStore.tasks where [.queued, .running, .awaitingConfirmation].contains(task.status) {
-            guard task.capability == .focusTimer, let deadline = task.deadlineAt else {
-                _ = try? agentAuditStore.transition(
-                    taskID: task.id,
-                    to: .cancelled,
-                    summary: "App 重启后清理了无法恢复的旧任务"
-                )
-                continue
-            }
-            if deadline <= now {
-                let finalStatus: AgentTaskStatus = task.status == .running ? .succeeded : .cancelled
-                let summary = finalStatus == .succeeded
-                    ? "专注时段在 App 未运行期间结束"
-                    : "App 重启后清理了未开始的过期专注任务"
-                _ = try? agentAuditStore.transition(taskID: task.id, to: finalStatus, summary: summary)
-                continue
-            }
-            guard !resumedFocus else {
-                _ = try? agentAuditStore.transition(
-                    taskID: task.id,
-                    to: .cancelled,
-                    summary: "App 重启后清理了重复的专注任务"
-                )
-                continue
-            }
-            resumedFocus = true
-            activeAgentTaskID = task.id
-            _ = activateAgentAppearance(for: .judas)
-            if task.status != .running {
-                _ = try? agentAuditStore.transition(taskID: task.id, to: .running, summary: "App 重启后恢复了专注计时")
-            }
-            beginFocusCountdown(taskID: task.id, deadline: deadline, target: task.subject)
-        }
-        if resumedFocus { showSpeech("Judas 已恢复专注计时。") }
+    private func clearFocusSession() {
+        activeFocusTask = nil
+        focusSessionID = nil
+        focusDeadline = nil
+        settingsStore.focusDeadline = nil
+        settingsStore.focusTarget = nil
     }
 
-    private func refreshAgentUI(now: TimeInterval) {
-        guard now >= nextAgentUIRefreshAt else { return }
-        nextAgentUIRefreshAt = now + 1
-        agentWindowController?.refreshActiveTask()
+    private func restoreFocusSession() {
+        guard let deadline = settingsStore.focusDeadline else { return }
+        if deadline <= Date() {
+            clearFocusSession()
+            showSpeech("刚才的专注时段已经结束啦。")
+            return
+        }
+        focusSessionID = UUID()
+        showSpeech("已恢复专注计时。")
+        beginFocusCountdown(deadline: deadline, target: settingsStore.focusTarget)
     }
 
     private func normalizedFocusTarget(_ rawValue: String) -> String? {
@@ -1680,118 +1453,10 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         return String(value.prefix(80))
     }
 
-    private func startReadOnlyAgent(
-        roleID: AgentRoleID,
-        title: String,
-        runningSummary: String,
-        runningSpeech: String,
-        onFinished: @escaping @MainActor () -> Void,
-        work: @escaping @MainActor (UUID) throws -> Void
-    ) {
-        guard !isPlayMode, activeAgentTask == nil else {
-            onFinished()
-            return
-        }
-        let role = AgentCatalog.profile(for: roleID)
-        let capability: AgentCapability = .readLocalTodos
-        guard AgentExecutionPolicy.authorization(for: capability, role: role) == .automatic else {
-            showSpeech("\(role.displayName) 当前没有所需权限。")
-            onFinished()
-            return
-        }
-        do {
-            let task = try agentAuditStore.createTask(
-                roleID: roleID,
-                capability: capability,
-                title: title
-            )
-            activeAgentTaskID = task.id
-            try agentAuditStore.transition(
-                taskID: task.id,
-                to: .running,
-                summary: runningSummary
-            )
-            agentWindowController?.reload()
-            perform(.observe)
-            showSpeech(runningSpeech)
-
-            activeAgentTask = Task { @MainActor [weak self] in
-                guard let self else { return }
-                do {
-                    // A small suspension keeps task state visible and makes cancellation meaningful.
-                    try await Task.sleep(for: .milliseconds(350))
-                    try Task.checkCancellation()
-                    try work(task.id)
-                    finishAgentTask()
-                    onFinished()
-                } catch is CancellationError {
-                    _ = try? agentAuditStore.transition(
-                        taskID: task.id,
-                        to: .cancelled,
-                        summary: "用户取消了任务"
-                    )
-                    activeAgentTask = nil
-                    activeAgentTaskID = nil
-                    agentWindowController?.reload()
-                    showSpeech("Agent 任务已取消。")
-                    onFinished()
-                } catch {
-                    _ = try? agentAuditStore.transition(
-                        taskID: task.id,
-                        to: .failed,
-                        summary: error.localizedDescription
-                    )
-                    activeAgentTask = nil
-                    activeAgentTaskID = nil
-                    agentWindowController?.reload()
-                    showSpeech("Agent 任务失败：\(error.localizedDescription)")
-                    onFinished()
-                }
-            }
-        } catch {
-            showSpeech("无法创建 Agent 任务：\(error.localizedDescription)")
-            onFinished()
-        }
-    }
-
-    private func finishAgentTask() {
-        activeAgentTask = nil
-        activeAgentTaskID = nil
-        agentWindowController?.reload()
-    }
-
-    @objc private func cancelActiveAgentTask() {
-        guard let id = activeAgentTaskID else { return }
-        cancelAgentTask(id: id)
-    }
-
-    private func cancelAgentTask(id: UUID) {
-        guard id == activeAgentTaskID else { return }
-        activeAgentTask?.cancel()
-    }
-
-    private func presentDailyPlan(_ plan: DailyPlan) {
-        presentMessage(
-            title: "Isaac 的今日计划",
-            message: plan.headline + "\n\n" + plan.steps.enumerated().map {
-                "\($0.offset + 1). \($0.element)"
-            }.joined(separator: "\n")
-        )
-    }
-
-    private func presentWellbeingPlan(_ plan: WellbeingPlan) {
-        presentMessage(
-            title: "Magdalene 的节奏检查",
-            message: plan.headline + "\n\n" + plan.suggestions.enumerated().map {
-                "\($0.offset + 1). \($0.element)"
-            }.joined(separator: "\n")
-        )
-    }
-
     private func presentFocusCompletion(target: String?) {
         let subject = target.map { "\n\n目标：\($0)" } ?? ""
         presentMessage(
-            title: "Judas：专注完成",
+            title: "专注完成",
             message: "起来休息一下，再决定下一步。\(subject)\n系统通知会在允许时触发，桌面气泡始终有效。"
         )
     }

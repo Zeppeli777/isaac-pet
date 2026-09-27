@@ -324,43 +324,6 @@ enum IsaacPetCoreChecks {
             failures.append("notion payload decoder: \(error)")
         }
 
-        let isaacAgent = AgentCatalog.profile(for: .isaac)
-        let magdaleneAgent = AgentCatalog.profile(for: .magdalene)
-        let cainAgent = AgentCatalog.profile(for: .cain)
-        let judasAgent = AgentCatalog.profile(for: .judas)
-        check(
-            AgentExecutionPolicy.authorization(for: .readLocalTodos, role: isaacAgent) == .automatic,
-            "local todo reading is automatic for Isaac"
-        )
-        check(
-            AgentExecutionPolicy.authorization(for: .writeLocalTodos, role: judasAgent) == .requiresConfirmation,
-            "local todo writes require confirmation"
-        )
-        check(
-            AgentExecutionPolicy.authorization(for: .readLocalTodos, role: magdaleneAgent) == .automatic,
-            "local todo reading is automatic for Magdalene"
-        )
-        check(
-            AgentExecutionPolicy.authorization(for: .networkResearch, role: cainAgent) == .unavailable,
-            "network research unavailable without installed adapter"
-        )
-        check(
-            AgentExecutionPolicy.authorization(for: .runCommands, role: isaacAgent) == .unavailable,
-            "undeclared command execution unavailable"
-        )
-        check(
-            AgentExecutionPolicy.authorization(for: .focusTimer, role: judasAgent) == .automatic,
-            "local focus timer is automatic for Judas"
-        )
-        check(
-            AgentExecutionPolicy.authorization(for: .focusTimer, role: isaacAgent) == .unavailable,
-            "focus timer is not available to undeclared roles"
-        )
-        check(AgentTaskStatus.queued.allowsTransition(to: .awaitingConfirmation), "queued task can await confirmation")
-        check(AgentTaskStatus.awaitingConfirmation.allowsTransition(to: .succeeded), "confirmed task can succeed")
-        check(!AgentTaskStatus.queued.allowsTransition(to: .succeeded), "queued task cannot bypass execution")
-        check(!AgentTaskStatus.succeeded.allowsTransition(to: .running), "terminal task cannot restart")
-        check(AgentTaskStatus.cancelled.isTerminal, "cancelled task is terminal")
         check(
             FocusSessionPolicy.duration(from: "999999") == FocusSessionPolicy.maximumDuration,
             "focus duration is capped"
@@ -420,20 +383,6 @@ enum IsaacPetCoreChecks {
             LocalPlanningAgent.makeDailyPlan(from: [], now: planningNow).sourceTodoIDs.isEmpty,
             "empty daily plan has no source todo"
         )
-
-        let wellbeingPlan = LocalWellbeingAgent.makeRhythmCheck(
-            from: [undatedPlanTodo, todayPlanTodo, overduePlanTodo],
-            now: planningNow,
-            calendar: planningCalendar
-        )
-        check(wellbeingPlan.headline.contains("逾期"), "wellbeing plan notices overdue workload")
-        check(wellbeingPlan.workloadCount == 3, "wellbeing plan counts pending todos")
-        check(
-            wellbeingPlan.suggestions.contains(where: { $0.contains("喝水") }),
-            "wellbeing plan includes a concrete break suggestion"
-        )
-        let emptyWellbeingPlan = LocalWellbeingAgent.makeRhythmCheck(from: [], now: planningNow)
-        check(emptyWellbeingPlan.workloadCount == 0, "empty wellbeing plan reports light workload")
 
         do {
             let openAIRequest = OpenAIChatRequest(
@@ -576,106 +525,9 @@ enum IsaacPetCoreChecks {
             try configStore.delete()
             let deletedAgain = try configStore.load()
             check(deletedAgain == nil, "deleting a missing config file succeeds")
-        } catch {
-            failures.append("LLM connection config: \(error)")
-        }
-
-        do {
-            let temporaryAgents = FileManager.default.temporaryDirectory
-                .appendingPathComponent("IsaacAgentChecks-\(UUID().uuidString)", isDirectory: true)
-            defer { try? FileManager.default.removeItem(at: temporaryAgents) }
-            let auditStore = try AgentAuditStore(directoryURL: temporaryAgents)
-            let task = try auditStore.createTask(
-                roleID: .isaac,
-                capability: .readLocalTodos,
-                title: "生成今日计划",
-                at: planningNow
-            )
-            try auditStore.transition(
-                taskID: task.id,
-                to: .running,
-                summary: "开始读取本地 Todo",
-                at: planningNow.addingTimeInterval(1)
-            )
-            try auditStore.transition(
-                taskID: task.id,
-                to: .succeeded,
-                summary: "计划已生成",
-                at: planningNow.addingTimeInterval(2)
-            )
-            let reloadedAudit = try AgentAuditStore(directoryURL: temporaryAgents)
-            check(reloadedAudit.tasks.first?.status == .succeeded, "agent task persistence")
-            check(reloadedAudit.events.map(\.status).prefix(3) == [.succeeded, .running, .queued], "agent audit order")
-            check(reloadedAudit.events.allSatisfy { $0.taskID == task.id }, "agent audit task linkage")
-
-            let focusDeadline = planningNow.addingTimeInterval(1_500)
-            let focusTask = try auditStore.createTask(
-                roleID: .judas,
-                capability: .focusTimer,
-                title: "专注 25 分钟",
-                deadlineAt: focusDeadline,
-                subject: "写报告",
-                at: planningNow
-            )
-            check(reloadedAudit.tasks.first?.deadlineAt == nil, "legacy task has no focus deadline")
-            try auditStore.transition(
-                taskID: focusTask.id,
-                to: .running,
-                summary: "开始专注",
-                at: planningNow.addingTimeInterval(1)
-            )
-            let reloadedFocus = try AgentAuditStore(directoryURL: temporaryAgents)
-            check(reloadedFocus.tasks.first?.deadlineAt == focusDeadline, "focus deadline persistence")
-            check(reloadedFocus.tasks.first?.subject == "写报告", "focus subject persistence")
-
-            let todoProposal = try auditStore.createTask(
-                roleID: .judas,
-                capability: .writeLocalTodos,
-                title: "创建 Todo：整理报告",
-                at: planningNow.addingTimeInterval(3)
-            )
-            try auditStore.transition(
-                taskID: todoProposal.id,
-                to: .awaitingConfirmation,
-                summary: "Judas 请求创建本地 Todo：整理报告",
-                at: planningNow.addingTimeInterval(4)
-            )
-            let awaitingConfirmation = try AgentAuditStore(directoryURL: temporaryAgents)
-            check(
-                awaitingConfirmation.tasks.first?.status == .awaitingConfirmation,
-                "agent write task persists while awaiting confirmation"
-            )
-            try auditStore.transition(
-                taskID: todoProposal.id,
-                to: .succeeded,
-                summary: "已按用户确认创建本地 Todo：整理报告",
-                at: planningNow.addingTimeInterval(5)
-            )
-            let completedProposal = try AgentAuditStore(directoryURL: temporaryAgents)
-            check(
-                completedProposal.tasks.first?.status == .succeeded,
-                "agent write task persists only after confirmation"
-            )
-            check(
-                completedProposal.events.first(where: { $0.taskID == todoProposal.id })?.status == .succeeded,
-                "agent confirmation audit records terminal write status"
-            )
-            do {
-                _ = try auditStore.transition(
-                    taskID: todoProposal.id,
-                    to: .running,
-                    summary: "不应重新运行",
-                    at: planningNow.addingTimeInterval(6)
-                )
-                failures.append("terminal agent task transition should be rejected")
-            } catch AgentAuditStoreError.invalidTransition {
-                // Expected: task history cannot reopen a terminal write action.
             } catch {
-                failures.append("agent transition validation: \(error)")
+                failures.append("LLM connection config: \(error)")
             }
-        } catch {
-            failures.append("agent audit persistence: \(error)")
-        }
 
         if failures.isEmpty {
             print("IsaacPetCoreChecks: all checks passed")
