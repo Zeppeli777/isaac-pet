@@ -13,7 +13,7 @@
 - 单击招手、双击跳跃、拖拽移动、右键打开菜单
 - 可从菜单栏或右键菜单进入游玩模式，使用 WASD 移动、方向键发射泪弹
 - 菜单可触发哭泣、点赞和观察动画，调整大小或暂停走动
-- 抽张塔罗牌：Isaac 举手抽出一张卡牌并在头顶展示卡名与祝福语，含正位与逆位共 44 张大阿尔克那牌
+- 抽张塔罗牌：Isaac 双手举卡，卡牌在头顶绕竖轴旋转两秒后向你放大展示，复原后浮出卡名与祝福语，含正位与逆位共 44 张大阿尔克那牌
 - 像素风对话气泡，可随机说话、显示颜文字或输入自定义文字
 - 可选 OpenAI Responses API 对话：默认关闭，API Key 只存 macOS 钥匙串
 - 内置本地 Todo 窗口，可新增、完成、恢复和删除任务，并设置定时提醒
@@ -70,7 +70,7 @@ scripts/install_app.sh
 - 拖拽 Isaac：移动到另一个位置或屏幕，松手后停在该屏幕底部
 - 右键 Isaac：打开动作与设置菜单
 - 对话气泡：从右键或菜单栏菜单选择随机文字、颜文字或“自定义气泡…”
-- 抽塔罗牌：从菜单选择“抽张塔罗牌”，Isaac 会举手抽出一张卡牌，头顶浮出卡牌面板（卡名与祝福语），约四分之一概率抽到逆位卡牌；卡面与文本取自以撒中文维基，完全离线展示
+- 抽塔罗牌：从菜单选择“抽张塔罗牌”，Isaac 会双手举起，卡牌在头顶绕竖轴旋转约两秒（背面为游戏内的牌背图案），随后向屏幕外放大展示结果并复原，浮出卡名与祝福语；约四分之一概率抽到逆位卡牌。卡面与文本取自以撒中文维基，完全离线展示
 - LLM：先从“LLM 设置…”填写 Base URL、API Key、模型并保存，再用“问 {当前形象}（LLM）…”主动发送单条问题
 - Todo：从菜单进入“新建 Todo…”、“查看 Todo…”或“查看今日计划…”。今日计划只读本机 Todo，按逾期、今天到期、后续到期、无日期的顺序给出最多三项重点，也可以让 Isaac 显示下一项
 - Apple 提醒事项：从 Todo 子菜单选择“从 Apple 提醒事项同步…”，授权后选择一个列表或全部列表
@@ -154,7 +154,7 @@ MAG_PYTHON="/Users/zeppeli/.cache/codex-runtimes/codex-primary-runtime/dependenc
 
 原始角色图和 Golden Locks 条保存在 `Assets/Source/agents/`，不会被打进应用包。用户从菜单选择的外观会持久保存，同时决定对话人格；Magdalene 另有自己的射击、竖向行走和举卡辅助图集（`Resources/Agents/magdalene-shooting-atlas.webp`、`magdalene-walking-vertical-atlas.webp`、`magdalene-raising-atlas.webp`），由对应脚本派生；角色没有提供辅助图集时（如 Judas）仍安全回退 Isaac 的基础辅助图集。泪弹是共用的圆形道具。
 
-塔罗牌内容与图标来自[以撒的结合中文维基](https://isaac.huijiwiki.com/wiki/卡牌)：44 张卡牌图标取自 wiki 的 `Cards_sprite.png`（即游戏内 HUD 卡面），名称、拾取语与使用效果整理自各卡牌页面，已静态收录为 `Sources/IsaacPetCore/TarotDeck.swift`。抽卡动画由已审核的点赞行重排时序派生（`scripts/derive_raising_atlas.py`），QA 接触表见 `qa/raising-atlas-contact-sheet.png` 与 `qa/tarot-icons-contact-sheet.png`。
+塔罗牌内容与图标来自[以撒的结合中文维基](https://isaac.huijiwiki.com/wiki/卡牌)：44 张卡牌图标取自 wiki 的 `Cards_sprite.png`（即游戏内 HUD 卡面），名称、拾取语与使用效果整理自各卡牌页面，已静态收录为 `Sources/IsaacPetCore/TarotDeck.swift`。抽卡动画为双手举卡（点赞行手臂镜像派生，`scripts/derive_raising_atlas.py`），卡牌在头顶绕竖轴旋转、放大展示后复原（`CardRevealController` 时间线驱动）；牌背图案按 wiki 的斜画牌背重排为正立 14×18（`scripts/generate_card_back.py`）。QA 接触表见 `qa/raising-atlas-contact-sheet.png`、`qa/tarot-icons-contact-sheet.png`、`qa/card-back-contact-sheet.png`。
 
 需要从终端或自动化工具直接打开界面时，可传入 `--show-todos`、`--show-daily-plan`、`--show-notion-settings` 或 `--show-llm-settings`。测试专注计时时可用环境变量 `ISAAC_FOCUS_DURATION_SECONDS` 提供额外时长选项。
 
