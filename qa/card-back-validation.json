@@ -1,0 +1,53 @@
+{
+  "source": "Assets/Source/tarot/card-back-diagonal.png",
+  "output": "Resources/Cards/CardBack.png",
+  "size": [
+    14,
+    18
+  ],
+  "palette": [
+    [
+      8,
+      0,
+      0
+    ],
+    [
+      115,
+      60,
+      55
+    ],
+    [
+      118,
+      75,
+      51
+    ],
+    [
+      123,
+      93,
+      47
+    ]
+  ],
+  "allowed": [
+    [
+      8,
+      0,
+      0
+    ],
+    [
+      115,
+      60,
+      55
+    ],
+    [
+      118,
+      75,
+      51
+    ],
+    [
+      123,
+      93,
+      47
+    ]
+  ],
+  "ok": true
+}
