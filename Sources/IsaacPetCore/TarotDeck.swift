@@ -761,8 +761,4 @@ public enum TarotDrawPolicy {
     public static func displayTitle(for card: TarotCard) -> String {
         card.isReversed ? "逆位 · \(card.nameZH)" : card.nameZH
     }
-
-    public static func effectText(for card: TarotCard) -> String {
-        card.effectLines.joined(separator: "\n")
-    }
 }

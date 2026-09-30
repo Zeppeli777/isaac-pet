@@ -3,8 +3,8 @@ import IsaacPetCore
 
 
 /// Shows the drawn tarot card above the pet's head: a pixel paper panel with the
-/// card icon, its name and effect. Like the speech and emote bubbles it is a
-/// non-activating floating panel, and only one of the three may be visible.
+/// card icon, its name and pickup blessing. Like the speech and emote bubbles it
+/// is a non-activating floating panel, and only one of the three may be visible.
 @MainActor
 final class CardBubbleController: NSObject {
     private let panel: NSPanel
@@ -157,25 +157,15 @@ private final class CardPanelView: NSView {
         .foregroundColor: PixelStyle.accentColor,
     ]
 
-    private static let pickupAttributes: [NSAttributedString.Key: Any] = [
+    private static let blessingAttributes: [NSAttributedString.Key: Any] = [
+        .font: PixelFont.speech,
+        .foregroundColor: PixelStyle.textColor,
+    ]
+
+    private static let blessingENAttributes: [NSAttributedString.Key: Any] = [
         .font: PixelFont.speech,
         .foregroundColor: PixelStyle.disabledTextColor,
     ]
-
-    private static let paragraphStyle: NSParagraphStyle = {
-        let style = NSMutableParagraphStyle()
-        style.lineBreakMode = .byCharWrapping
-        style.lineSpacing = 2
-        return style
-    }()
-
-    private static func effectAttributes() -> [NSAttributedString.Key: Any] {
-        [
-            .font: PixelFont.speech,
-            .foregroundColor: PixelStyle.textColor,
-            .paragraphStyle: paragraphStyle,
-        ]
-    }
 
     private var iconSize: NSSize {
         guard let spriteFrame else { return .zero }
@@ -185,17 +175,23 @@ private final class CardPanelView: NSView {
         )
     }
 
+    /// Panel text: card name, then the pickup blessing (the wiki card face shows
+    /// the Chinese quote with its English original beneath it).
+    private var textLines: [NSAttributedString] {
+        guard let card else { return [] }
+        var lines = [
+            NSAttributedString(string: TarotDrawPolicy.displayTitle(for: card), attributes: Self.titleAttributes),
+            NSAttributedString(string: card.pickupZH, attributes: Self.blessingAttributes),
+        ]
+        if !card.pickupEN.isEmpty {
+            lines.append(NSAttributedString(string: card.pickupEN, attributes: Self.blessingENAttributes))
+        }
+        return lines
+    }
+
     private var textWidth: CGFloat {
-        guard let card else { return Layout.maximumTextWidth }
-        let title = NSAttributedString(string: TarotDrawPolicy.displayTitle(for: card), attributes: Self.titleAttributes)
-        let pickup = NSAttributedString(string: card.pickupZH, attributes: Self.pickupAttributes)
-        let effect = NSAttributedString(
-            string: TarotDrawPolicy.effectText(for: card),
-            attributes: Self.effectAttributes()
-        )
-        let attributedParts: [NSAttributedString] = [title, pickup, effect]
-        let widths = attributedParts.map { attributed -> CGFloat in
-            ceil(attributed.boundingRect(
+        let widths = textLines.map { line -> CGFloat in
+            ceil(line.boundingRect(
                 with: NSSize(width: Layout.maximumTextWidth, height: 600),
                 options: [.usesLineFragmentOrigin, .usesFontLeading]
             ).width)
@@ -203,25 +199,18 @@ private final class CardPanelView: NSView {
         return min(Layout.maximumTextWidth, max(80, widths.max() ?? 80))
     }
 
+    private var textSize: NSSize {
+        let lineHeight = ceil(NSAttributedString(string: "测", attributes: Self.blessingAttributes).size().height)
+        let count = CGFloat(textLines.count)
+        let height = count == 0 ? 0 : count * lineHeight + (count - 1) * Layout.textGap
+        return NSSize(width: textWidth, height: height)
+    }
+
     /// Total panel size including the stepped border and the tail space.
     func fittingSize() -> NSSize {
-        guard let card else { return NSSize(width: 240, height: 120) }
-        let title = NSAttributedString(string: TarotDrawPolicy.displayTitle(for: card), attributes: Self.titleAttributes)
-        let pickup = NSAttributedString(string: card.pickupZH, attributes: Self.pickupAttributes)
-        let effect = NSAttributedString(
-            string: TarotDrawPolicy.effectText(for: card),
-            attributes: Self.effectAttributes()
-        )
-        let titleHeight = ceil(title.size().height)
-        let pickupHeight = pickup.length == 0 ? 0 : ceil(pickup.size().height) + Layout.textGap
-        let effectHeight = ceil(effect.boundingRect(
-            with: NSSize(width: textWidth, height: 600),
-            options: [.usesLineFragmentOrigin, .usesFontLeading]
-        ).height)
-        let textHeight = titleHeight + pickupHeight + effectHeight
-
-        let bodyWidth = iconSize.width + Layout.iconGap + textWidth + Layout.padding * 2
-        let bodyHeight = max(iconSize.height, textHeight) + Layout.padding * 2
+        let text = textSize
+        let bodyWidth = iconSize.width + Layout.iconGap + text.width + Layout.padding * 2
+        let bodyHeight = max(iconSize.height, text.height) + Layout.padding * 2
         let outerInset = Layout.frameBorder * 2
         return NSSize(
             width: ceil(bodyWidth) + outerInset,
@@ -264,30 +253,17 @@ private final class CardPanelView: NSView {
             height: iconSize.height
         )
 
-        let title = NSAttributedString(string: TarotDrawPolicy.displayTitle(for: card), attributes: Self.titleAttributes)
-        let pickup = NSAttributedString(string: card.pickupZH, attributes: Self.pickupAttributes)
-        let effect = NSAttributedString(
-            string: TarotDrawPolicy.effectText(for: card),
-            attributes: Self.effectAttributes()
-        )
-        let titleHeight = ceil(title.size().height)
-        let pickupHeight = pickup.length == 0 ? 0 : ceil(pickup.size().height) + Layout.textGap
-        let effectHeight = ceil(effect.boundingRect(
-            with: NSSize(width: textWidth, height: 600),
-            options: [.usesLineFragmentOrigin, .usesFontLeading]
-        ).height)
-        let textHeight = titleHeight + pickupHeight + effectHeight
-        let textY = content.minY + (content.height - textHeight) / 2
+        let text = textSize
         let textX = iconRect.maxX + Layout.iconGap
-
-        title.draw(at: NSPoint(x: textX, y: textY + textHeight - titleHeight))
-        if pickup.length > 0 {
-            pickup.draw(at: NSPoint(x: textX, y: textY + effectHeight))
+        let textY = content.minY + (content.height - text.height) / 2
+        // Lay the lines out top-down; the first line is the card name.
+        var lineTop = textY + text.height
+        for line in textLines {
+            let lineHeight = ceil(line.size().height)
+            lineTop -= lineHeight
+            line.draw(at: NSPoint(x: textX, y: lineTop))
+            lineTop -= Layout.textGap
         }
-        effect.draw(
-            with: NSRect(x: textX, y: textY, width: textWidth, height: effectHeight),
-            options: [.usesLineFragmentOrigin, .usesFontLeading]
-        )
 
         drawIcon(spriteFrame, in: iconRect)
     }

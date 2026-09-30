@@ -173,10 +173,6 @@ enum IsaacPetCoreChecks {
             TarotDrawPolicy.displayTitle(for: seededDraw).hasPrefix("逆位"),
             "reversed title marks the inversion"
         )
-        check(
-            TarotDrawPolicy.effectText(for: uprightCard) == uprightCard.effectLines.joined(separator: "\n"),
-            "effect text joins the effect lines"
-        )
         check(TarotDrawPolicy.cardPanelDisplayDuration > 3, "card panel stays readable")
 
         let todoNow = Date(timeIntervalSince1970: 1_000)
