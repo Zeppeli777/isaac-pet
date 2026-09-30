@@ -195,7 +195,7 @@ public enum AnimationCatalog {
         .observe: AnimationSpec(row: 8, frameCount: 6, frameDuration: 0.15, loops: false),
         // The row is the thumbsUp source row this motion derives from; the raise
         // animation itself renders from the raising helper atlas with a held pose.
-        .drawCard: AnimationSpec(row: 7, frameCount: 8, frameDuration: 0.13, loops: false),
+        .drawCard: AnimationSpec(row: 7, frameCount: 4, frameDuration: 0.13, loops: false),
     ]
 
     public static let verticalWalkingSpecs: [VerticalWalkingDirection: AnimationSpec] = [
