@@ -24,6 +24,9 @@ SHOOT_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/shooting-at
 VERTICAL_WALK_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/walking-vertical-atlas.webp" | awk '/pixelWidth/ {print $2}')
 VERTICAL_WALK_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/walking-vertical-atlas.webp" | awk '/pixelHeight/ {print $2}')
 [ "$VERTICAL_WALK_WIDTH" = "1536" ] && [ "$VERTICAL_WALK_HEIGHT" = "416" ] || { echo "Unexpected vertical walking atlas size: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT}" >&2; exit 1; }
+RAISING_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/raising-atlas.webp" | awk '/pixelWidth/ {print $2}')
+RAISING_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/raising-atlas.webp" | awk '/pixelHeight/ {print $2}')
+[ "$RAISING_WIDTH" = "1536" ] && [ "$RAISING_HEIGHT" = "208" ] || { echo "Unexpected raising atlas size: ${RAISING_WIDTH}x${RAISING_HEIGHT}" >&2; exit 1; }
 TEAR_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/IsaacTear.png" | awk '/pixelWidth/ {print $2}')
 TEAR_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/IsaacTear.png" | awk '/pixelHeight/ {print $2}')
 [ "$TEAR_WIDTH" = "28" ] && [ "$TEAR_HEIGHT" = "28" ] || { echo "Unexpected tear size: ${TEAR_WIDTH}x${TEAR_HEIGHT}" >&2; exit 1; }
@@ -50,7 +53,7 @@ if [ -f "$APP/Contents/Resources/Agents/magdalene-portrait.png" ]; then
     exit 1
   }
 fi
-for helper in "magdalene-shooting-atlas 768 208" "magdalene-walking-vertical-atlas 1536 416"; do
+for helper in "magdalene-shooting-atlas 768 208" "magdalene-walking-vertical-atlas 1536 416" "magdalene-raising-atlas 1536 208"; do
   set -- $helper
   HELPER="$APP/Contents/Resources/Agents/$1.webp"
   [ -f "$HELPER" ] || continue
@@ -61,6 +64,14 @@ for helper in "magdalene-shooting-atlas 768 208" "magdalene-walking-vertical-atl
     exit 1
   }
 done
+CARD_COUNT=$(find "$APP/Contents/Resources/Cards" -type f -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
+[ "$CARD_COUNT" = "45" ] || { echo "Unexpected card icon count: ${CARD_COUNT} (expected 45 = 44 faces + back)" >&2; exit 1; }
+CARD_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/Cards/Tarot00.png" | awk '/pixelWidth/ {print $2}')
+CARD_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/Cards/Tarot00.png" | awk '/pixelHeight/ {print $2}')
+[ "$CARD_WIDTH" = "14" ] && [ "$CARD_HEIGHT" = "18" ] || { echo "Unexpected card icon size: ${CARD_WIDTH}x${CARD_HEIGHT}" >&2; exit 1; }
+BACK_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/Cards/CardBack.png" | awk '/pixelWidth/ {print $2}')
+BACK_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/Cards/CardBack.png" | awk '/pixelHeight/ {print $2}')
+[ "$BACK_WIDTH" = "14" ] && [ "$BACK_HEIGHT" = "18" ] || { echo "Unexpected card back size: ${BACK_WIDTH}x${BACK_HEIGHT}" >&2; exit 1; }
 echo "atlas: ${WIDTH}x${HEIGHT} RGBA"
 echo "shooting atlas: ${SHOOT_WIDTH}x${SHOOT_HEIGHT} Isaac source frames"
 echo "vertical walking atlas: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT} Isaac source frames"

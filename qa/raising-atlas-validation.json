@@ -1,0 +1,129 @@
+{
+  "sourceRow": 7,
+  "sequence": [
+    0,
+    1,
+    2,
+    "composed-o-pose"
+  ],
+  "figureBox": [
+    82,
+    218,
+    110,
+    249
+  ],
+  "anchors": {
+    "headTop": 46,
+    "feetBottom": 178,
+    "faceAxis": 83.5
+  },
+  "cell": [
+    192,
+    208
+  ],
+  "roles": [
+    {
+      "source": "Resources/spritesheet.webp",
+      "output": "Resources/raising-atlas.webp",
+      "size": [
+        1536,
+        208
+      ],
+      "cells": [
+        {
+          "index": 0,
+          "bbox": [
+            36,
+            49,
+            156,
+            181
+          ],
+          "matches_source_frame": true
+        },
+        {
+          "index": 1,
+          "bbox": [
+            36,
+            48,
+            156,
+            180
+          ],
+          "matches_source_frame": true
+        },
+        {
+          "index": 2,
+          "bbox": [
+            29,
+            47,
+            165,
+            179
+          ],
+          "matches_source_frame": true
+        },
+        {
+          "index": 3,
+          "bbox": [
+            24,
+            46,
+            143,
+            178
+          ],
+          "matches_source_frame": false
+        }
+      ],
+      "ok": true
+    },
+    {
+      "source": "Resources/Agents/magdalene-spritesheet.webp",
+      "output": "Resources/Agents/magdalene-raising-atlas.webp",
+      "size": [
+        1536,
+        208
+      ],
+      "cells": [
+        {
+          "index": 0,
+          "bbox": [
+            20,
+            29,
+            176,
+            181
+          ],
+          "matches_source_frame": true
+        },
+        {
+          "index": 1,
+          "bbox": [
+            20,
+            28,
+            176,
+            180
+          ],
+          "matches_source_frame": true
+        },
+        {
+          "index": 2,
+          "bbox": [
+            20,
+            26,
+            176,
+            179
+          ],
+          "matches_source_frame": true
+        },
+        {
+          "index": 3,
+          "bbox": [
+            20,
+            29,
+            176,
+            178
+          ],
+          "matches_source_frame": false
+        }
+      ],
+      "ok": true
+    }
+  ],
+  "ok": true
+}
