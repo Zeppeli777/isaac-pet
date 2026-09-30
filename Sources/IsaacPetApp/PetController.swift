@@ -21,6 +21,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private let speechBubble: SpeechBubbleController
     private let emoteBubble = EmoteBubbleController()
     private let cardBubble = CardBubbleController()
+    private let cardReveal = CardRevealController()
     private let cardImages = CardImageCatalog()
     private let todoStore: TodoStore
     private let todoReminderCoordinator: TodoReminderCoordinator
@@ -66,6 +67,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private var notionSyncTask: Task<Void, Never>?
     private var llmTask: Task<Void, Never>?
     private var cardDrawTask: Task<Void, Never>?
+    private var cardDrawSession = 0
     private var nextTodoCheckAt = ProcessInfo.processInfo.systemUptime + 0.75
     private var didExplainNotificationDenial = false
 
@@ -362,6 +364,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         checkDueTodos(now: ProcessInfo.processInfo.systemUptime)
         updateSpeechBubbleAnchor()
         updateEmoteBubbleAnchor()
+        updateCardRevealAnchor()
     }
 
     func stop() {
@@ -373,13 +376,14 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         appleRemindersSyncTask?.cancel()
         notionSyncTask?.cancel()
         llmTask?.cancel()
-        cardDrawTask?.cancel()
+        cancelCardDraw()
         activeFocusTask?.cancel()
         todoWindowController?.close()
         dailyPlanWindowController?.close()
         speechBubble.stop()
         emoteBubble.stop()
         cardBubble.stop()
+        cardReveal.stop()
     }
 
     private func tick() {
@@ -756,6 +760,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         guard !isPlayMode, let screen = currentScreen() else { return }
         // The speech, emote and card panels float at the same spot above the pet;
         // showing one must dismiss the others or they overlap.
+        cancelCardDraw()
         emoteBubble.hide()
         cardBubble.hide()
         speechBubble.show(message, anchoredTo: panel.frame, in: screen.visibleFrame)
@@ -769,6 +774,11 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private func updateEmoteBubbleAnchor() {
         guard emoteBubble.isVisible, let screen = currentScreen() else { return }
         emoteBubble.updateAnchor(petFrame: panel.frame, screenFrame: screen.visibleFrame)
+    }
+
+    private func updateCardRevealAnchor() {
+        guard cardReveal.isVisible, let screen = currentScreen() else { return }
+        cardReveal.updateAnchor(petFrame: panel.frame, screenFrame: screen.visibleFrame)
     }
 
     private func checkDueTodos(now: TimeInterval) {
@@ -870,11 +880,10 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     private func enterPlayMode() {
         guard !isPlayMode else { return }
         isPlayMode = true
+        cancelCardDraw()
         speechBubble.hide()
         emoteBubble.hide()
         cardBubble.hide()
-        cardDrawTask?.cancel()
-        cardDrawTask = nil
         targetX = nil
         actionEndsAt = nil
         hoveredSince = nil
@@ -997,6 +1006,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         let emote = EmoteID.random()
         perform(emote.companionAnimation)
         guard let spriteFrame = try? atlas.emoteFrame(emote), let screen = currentScreen() else { return }
+        cancelCardDraw()
         speechBubble.hide()
         cardBubble.hide()
         emoteBubble.show(spriteFrame, anchoredTo: panel.frame, in: screen.visibleFrame, scale: settings.scale)
@@ -1006,15 +1016,54 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         guard !isPlayMode else { return }
         let card = TarotDrawPolicy.draw()
         perform(.drawCard)
+        // Hold the both-arms-up pose through the whole shuffle-and-reveal.
+        actionEndsAt = ProcessInfo.processInfo.systemUptime
+            + TarotDrawPolicy.raiseTransitionDuration
+            + TarotDrawPolicy.revealDuration
+            + 0.2
         cardDrawTask?.cancel()
+        cardDrawSession += 1
+        let session = cardDrawSession
         cardDrawTask = Task { @MainActor [weak self] in
             guard let self else { return }
             do {
-                try await Task.sleep(nanoseconds: UInt64(TarotDrawPolicy.cardAppearDelay * 1_000_000_000))
-            } catch { return }
-            guard !Task.isCancelled else { return }
-            showCardPanel(card)
+                try await Task.sleep(
+                    nanoseconds: UInt64(TarotDrawPolicy.raiseTransitionDuration * 1_000_000_000)
+                )
+                guard session == cardDrawSession, !Task.isCancelled else { return }
+                guard let screen = currentScreen() else { return }
+                guard let spriteFrame = try? cardImages.frame(for: card),
+                      let backFrame = try? cardImages.backFrame() else {
+                    showCardPanel(card)
+                    return
+                }
+                speechBubble.hide()
+                emoteBubble.hide()
+                cardBubble.hide()
+                cardReveal.prepare(
+                    spriteFrame: spriteFrame,
+                    backFrame: backFrame,
+                    anchoredTo: panel.frame,
+                    in: screen.visibleFrame,
+                    scale: settings.scale
+                )
+                try await cardReveal.run()
+                guard session == cardDrawSession, !isPlayMode else { return }
+                showCardPanel(card)
+            } catch is CancellationError {
+                if session == cardDrawSession { cardReveal.hide() }
+            } catch {
+                if session == cardDrawSession { cardReveal.hide() }
+            }
         }
+    }
+
+    /// Cancels an in-flight draw and clears every card surface.
+    private func cancelCardDraw() {
+        cardDrawTask?.cancel()
+        cardDrawTask = nil
+        cardDrawSession += 1
+        cardReveal.hide()
     }
 
     private func showCardPanel(_ card: TarotCard) {
@@ -1025,6 +1074,7 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         }
         speechBubble.hide()
         emoteBubble.hide()
+        cardReveal.hide()
         cardBubble.show(
             card,
             spriteFrame: spriteFrame,

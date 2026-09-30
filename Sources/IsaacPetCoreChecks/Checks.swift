@@ -124,7 +124,7 @@ enum IsaacPetCoreChecks {
         )
 
         check(AnimationCatalog.raisingColumns == 8 && AnimationCatalog.raisingRows == 1, "raising atlas shape")
-        check(AnimationCatalog.spec(for: .drawCard).frameCount == 8, "draw card frame count")
+        check(AnimationCatalog.spec(for: .drawCard).frameCount == 4, "draw card frame count")
         check(
             !AnimationCatalog.spec(for: .drawCard).loops,
             "draw card animation plays once"
@@ -174,6 +174,23 @@ enum IsaacPetCoreChecks {
             "reversed title marks the inversion"
         )
         check(TarotDrawPolicy.cardPanelDisplayDuration > 3, "card panel stays readable")
+        check(
+            abs(
+                TarotDrawPolicy.raiseTransitionDuration
+                    - AnimationCatalog.spec(for: .drawCard).duration
+            ) < 0.0001,
+            "raise transition matches the atlas spec"
+        )
+        check(TarotDrawPolicy.spinDuration == 2, "card shuffles for two seconds")
+        check(TarotDrawPolicy.zoomScale > 2, "reveal zoom is dramatic")
+        check(
+            abs(
+                TarotDrawPolicy.revealDuration
+                    - (TarotDrawPolicy.spinDuration + TarotDrawPolicy.zoomInDuration
+                        + TarotDrawPolicy.zoomHoldDuration + TarotDrawPolicy.zoomOutDuration)
+            ) < 0.0001,
+            "reveal duration sums its phases"
+        )
 
         let todoNow = Date(timeIntervalSince1970: 1_000)
         let earlyTodo = TodoItem(

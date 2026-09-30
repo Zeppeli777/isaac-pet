@@ -745,9 +745,22 @@ public enum TarotDeck {
 public enum TarotDrawPolicy {
     /// Reversed arcana are the rarer pull, mirroring their in-game scarcity.
     public static let reversedProbability = 0.25
-    /// Delay before the card panel pops up, so the raise motion lands first.
-    public static let cardAppearDelay: TimeInterval = 0.35
+    /// Raise motion: idle → arm rising → one arm up → both arms up (4 atlas frames).
+    public static let raiseTransitionDuration: TimeInterval = 0.52
+    /// The card shuffles face-to-back above the pet's head for two seconds
+    /// before the reveal zoom.
+    public static let spinDuration: TimeInterval = 2.0
+    public static let zoomInDuration: TimeInterval = 0.35
+    public static let zoomHoldDuration: TimeInterval = 0.7
+    public static let zoomOutDuration: TimeInterval = 0.25
+    public static let zoomScale: CGFloat = 2.8
+    public static let tiltAngle: Double = 12 * .pi / 180
     public static let cardPanelDisplayDuration: TimeInterval = 6
+
+    /// Total time the card spends shuffling and revealing (without the raise).
+    public static var revealDuration: TimeInterval {
+        spinDuration + zoomInDuration + zoomHoldDuration + zoomOutDuration
+    }
 
     /// Draws one card. `random` injects values in 0..<1 so checks stay deterministic.
     public static func draw(random: () -> Double = { Double.random(in: 0..<1) }) -> TarotCard {

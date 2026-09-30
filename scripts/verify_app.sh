@@ -65,10 +65,13 @@ for helper in "magdalene-shooting-atlas 768 208" "magdalene-walking-vertical-atl
   }
 done
 CARD_COUNT=$(find "$APP/Contents/Resources/Cards" -type f -name '*.png' 2>/dev/null | wc -l | tr -d ' ')
-[ "$CARD_COUNT" = "44" ] || { echo "Unexpected card icon count: ${CARD_COUNT} (expected 44)" >&2; exit 1; }
+[ "$CARD_COUNT" = "45" ] || { echo "Unexpected card icon count: ${CARD_COUNT} (expected 45 = 44 faces + back)" >&2; exit 1; }
 CARD_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/Cards/Tarot00.png" | awk '/pixelWidth/ {print $2}')
 CARD_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/Cards/Tarot00.png" | awk '/pixelHeight/ {print $2}')
 [ "$CARD_WIDTH" = "14" ] && [ "$CARD_HEIGHT" = "18" ] || { echo "Unexpected card icon size: ${CARD_WIDTH}x${CARD_HEIGHT}" >&2; exit 1; }
+BACK_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/Cards/CardBack.png" | awk '/pixelWidth/ {print $2}')
+BACK_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/Cards/CardBack.png" | awk '/pixelHeight/ {print $2}')
+[ "$BACK_WIDTH" = "14" ] && [ "$BACK_HEIGHT" = "18" ] || { echo "Unexpected card back size: ${BACK_WIDTH}x${BACK_HEIGHT}" >&2; exit 1; }
 echo "atlas: ${WIDTH}x${HEIGHT} RGBA"
 echo "shooting atlas: ${SHOOT_WIDTH}x${SHOOT_HEIGHT} Isaac source frames"
 echo "vertical walking atlas: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT} Isaac source frames"
