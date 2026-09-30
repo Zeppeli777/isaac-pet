@@ -154,7 +154,7 @@ MAG_PYTHON="/Users/zeppeli/.cache/codex-runtimes/codex-primary-runtime/dependenc
 
 原始角色图和 Golden Locks 条保存在 `Assets/Source/agents/`，不会被打进应用包。用户从菜单选择的外观会持久保存，同时决定对话人格；Magdalene 另有自己的射击、竖向行走和举卡辅助图集（`Resources/Agents/magdalene-shooting-atlas.webp`、`magdalene-walking-vertical-atlas.webp`、`magdalene-raising-atlas.webp`），由对应脚本派生；角色没有提供辅助图集时（如 Judas）仍安全回退 Isaac 的基础辅助图集。泪弹是共用的圆形道具。
 
-塔罗牌内容与图标来自[以撒的结合中文维基](https://isaac.huijiwiki.com/wiki/卡牌)：44 张卡牌图标取自 wiki 的 `Cards_sprite.png`（即游戏内 HUD 卡面），名称、拾取语与使用效果整理自各卡牌页面，已静态收录为 `Sources/IsaacPetCore/TarotDeck.swift`。抽卡动画为双手举卡（点赞行手臂镜像派生，`scripts/derive_raising_atlas.py`），卡牌在头顶绕竖轴旋转、放大展示后复原（`CardRevealController` 时间线驱动）；牌背图案按 wiki 的斜画牌背重排为正立 14×18（`scripts/generate_card_back.py`）。QA 接触表见 `qa/raising-atlas-contact-sheet.png`、`qa/tarot-icons-contact-sheet.png`、`qa/card-back-contact-sheet.png`。
+塔罗牌内容与图标来自[以撒的结合中文维基](https://isaac.huijiwiki.com/wiki/卡牌)：44 张卡牌图标取自 wiki 的 `Cards_sprite.png`（即游戏内 HUD 卡面），名称、拾取语与使用效果整理自各卡牌页面，已静态收录为 `Sources/IsaacPetCore/TarotDeck.swift`。抽卡动画为双手举卡：前三帧取自已审核的点赞行，末帧由 character sheet 自带的「双手上举」小人按头/脚锚点合成（`scripts/derive_raising_atlas.py`，Magdalene 在合成帧上回贴自己的头部与头发）；卡牌在头顶绕竖轴旋转、放大展示后复原（`CardRevealController` 时间线驱动）；牌背图案按 wiki 的斜画牌背重排为正立 14×18（`scripts/generate_card_back.py`）。QA 接触表见 `qa/raising-atlas-contact-sheet.png`、`qa/tarot-icons-contact-sheet.png`、`qa/card-back-contact-sheet.png`。
 
 需要从终端或自动化工具直接打开界面时，可传入 `--show-todos`、`--show-daily-plan`、`--show-notion-settings` 或 `--show-llm-settings`。测试专注计时时可用环境变量 `ISAAC_FOCUS_DURATION_SECONDS` 提供额外时长选项。
 

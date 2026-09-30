@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Derive the card-drawing "raise" helper atlases from the approved thumbsUp row.
+"""Derive the card-drawing "raise" helper atlases from approved source art.
 
-抽卡动作 = 双手向上举起卡牌。The pixels come from the approved thumbsUp motion
-(the only upward arm raise in the source atlas) and are only re-timed and
-mirrored: the raised arm from the fully-lifted frame is mirrored about the
-character's symmetry axis and tucked behind the body, giving a both-arms-up
-pose without inventing new pixels. Like the shooting and vertical-walking
-helpers this is a deterministic derivation of existing source art per role.
+抽卡动作 = 双手向上举起卡牌。Frames 0-2 reuse the approved thumbsUp row (arm
+down, rising, one arm up). The final both-arms-up frame is composed from the
+character sheet's own "\\o/" figure (crying, both arms raised — the pose the
+game itself uses), scaled to the approved sprite band and registered on the
+shared feet/head anchors, so no mirrored or invented pixels are involved.
+
+Magdalene keeps her Golden Locks: the composed figure's head is replaced by her
+own thumbsUp head+hair (the region above where the arms live in both roles),
+plus the hair strands that hang below that line (extracted as the per-pixel
+difference from the base Isaac frame, which excludes arms because both roles'
+arm pixels are identical there).
 """
 
 from __future__ import annotations
@@ -22,28 +27,20 @@ CELL_WIDTH = 192
 CELL_HEIGHT = 208
 SOURCE_ROW = 7  # thumbsUp
 SOURCE_FRAMES = 6
-# idle, arm rising, one arm up — then the mirrored both-arms pose (held during
-# the spin) is appended as the fourth column.
-RAISE_SEQUENCE = (0, 1, 2)
+RAISE_SEQUENCE = (0, 1, 2)  # followed by the composed both-arms frame
+# The character sheet's complete both-arms-up figure (crying, "\\o/").
+FIGURE_BOX = (82, 218, 110, 249)
+# Anchor band the approved thumbsUp sprites occupy inside a cell: head top and
+# feet bottom, with the shared face axis as the horizontal center.
+HEAD_TOP = 46
+FEET_BOTTOM = 178
+FACE_AXIS = 83.5
+# Head+hair live above this line in both roles' frame 0; arms start below it.
+HEAD_BOTTOM = 137
 ROLES = {
     "Resources/spritesheet.webp": "Resources/raising-atlas.webp",
     "Resources/Agents/magdalene-spritesheet.webp": "Resources/Agents/magdalene-raising-atlas.webp",
 }
-# The raised arm lives in this strip of the fully-lifted frame (frame 3);
-# everything left of it is face/body and must not leak into the mirror.
-ARM_STRIP = (112, 166, 46, 146)  # (x0, x1, y0, y1)
-# Mirror axis of the shared face art, located by scanning the Isaac head band
-# (score 0.986) and verified on the QA contact sheet. Both roles reuse the same
-# face registration, so one axis serves both; automatic detection is unreliable
-# under Magdalene's asymmetric hair.
-SYMMETRY_AXES = {
-    "Resources/spritesheet.webp": 83.5,
-    "Resources/Agents/magdalene-spritesheet.webp": 83.5,
-}
-
-
-def strip_box() -> tuple[int, int, int, int]:
-    return (ARM_STRIP[0], ARM_STRIP[2], ARM_STRIP[1], ARM_STRIP[3])
 
 
 def frame(atlas: Image.Image, column: int) -> Image.Image:
@@ -52,30 +49,39 @@ def frame(atlas: Image.Image, column: int) -> Image.Image:
     return atlas.crop((left, top, left + CELL_WIDTH, top + CELL_HEIGHT))
 
 
-def both_arms_frame(
-    lifted: Image.Image, base_lifted: Image.Image, axis: float
-) -> Image.Image:
-    """Add a mirrored copy of the raised arm on the other side of the head.
+def composed_figure_frame() -> Image.Image:
+    """Scale the sheet's \\o/ figure onto the approved sprite band anchors."""
+    sheet = Image.open(ROOT / "Assets/Source/isaac-character-sheet.png").convert("RGBA")
+    figure = sheet.crop(FIGURE_BOX)
+    band_height = FEET_BOTTOM - HEAD_TOP
+    scale = band_height / figure.height
+    scaled = figure.resize(
+        (round(figure.width * scale), band_height), Image.Resampling.NEAREST
+    )
+    canvas = Image.new("RGBA", (CELL_WIDTH, CELL_HEIGHT), (0, 0, 0, 0))
+    canvas.alpha_composite(scaled, (round(FACE_AXIS - scaled.width / 2), HEAD_TOP))
+    return canvas
 
-    The arm pixels always come from the base (Isaac) sheet: role hair overlays
-    reach into the arm strip and must not be duplicated onto the other side.
-    The role's own frame composites on top, so the mirrored arm only shows
-    where the body is transparent — the arm reads as tucked behind the head.
-    """
-    strip = base_lifted.crop(strip_box())
-    strip_pixels = strip.load()
-    composite = lifted.copy()
-    for y in range(strip.height):
-        for x in range(strip.width):
-            pixel = strip_pixels[x, y]
+
+def role_head_layer(role_frame0: Image.Image, base_frame0: Image.Image) -> Image.Image | None:
+    """Head+hair layer from the role's own frame 0, or None for the base role."""
+    if role_frame0.tobytes() == base_frame0.tobytes():
+        return None
+    role_px = role_frame0.load()
+    base_px = base_frame0.load()
+    layer = Image.new("RGBA", (CELL_WIDTH, CELL_HEIGHT), (0, 0, 0, 0))
+    layer_px = layer.load()
+    for y in range(CELL_HEIGHT):
+        for x in range(CELL_WIDTH):
+            pixel = role_px[x, y]
             if pixel[3] == 0:
                 continue
-            source_x = ARM_STRIP[0] + x
-            target_x = int(round(2 * axis - source_x))
-            if 0 <= target_x < CELL_WIDTH:
-                composite.putpixel((target_x, ARM_STRIP[2] + y), pixel)
-    composite.alpha_composite(lifted)
-    return composite
+            # Above the arm line the whole head+hair transfers; below it only
+            # the hanging hair strands, which the base role lacks right there
+            # (both roles' arm pixels are identical, so they diff away).
+            if y <= HEAD_BOTTOM or base_px[x, y] != pixel:
+                layer_px[x, y] = pixel
+    return layer
 
 
 def connected_components(image: Image.Image) -> int:
@@ -100,28 +106,27 @@ def connected_components(image: Image.Image) -> int:
     return components
 
 
-def derive(source_path: Path, output_path: Path) -> list[Image.Image]:
+def derive(source_path: Path, output_path: Path, base_atlas: Image.Image) -> list[Image.Image]:
     atlas = Image.open(source_path).convert("RGBA")
     sources = [frame(atlas, column) for column in range(SOURCE_FRAMES)]
-    base_atlas = Image.open(ROOT / "Resources/spritesheet.webp").convert("RGBA")
-    base_sources = [frame(base_atlas, column) for column in range(SOURCE_FRAMES)]
     for column, cell in enumerate(sources):
         if not cell.getbbox():
             raise SystemExit(f"{source_path}: thumbsUp frame {column} is empty")
 
-    both_arms = both_arms_frame(sources[3], base_sources[3], SYMMETRY_AXES[str(source_path.relative_to(ROOT))])
-    if connected_components(both_arms) != connected_components(sources[3]):
-        raise SystemExit(f"{source_path}: mirrored arm introduced stray pixels")
+    figure_frame = composed_figure_frame()
+    head_layer = role_head_layer(sources[0], frame(base_atlas, 0))
+    if head_layer is not None:
+        figure_frame.alpha_composite(head_layer)
+    if connected_components(figure_frame) != 1:
+        raise SystemExit(f"{source_path}: composed both-arms frame is not one connected sprite")
 
-    derived: list[Image.Image | None] = [
-        sources[column] for column in RAISE_SEQUENCE
-    ] + [None] * (8 - len(RAISE_SEQUENCE))
-    derived[3] = both_arms
+    derived: list[Image.Image] = [sources[column] for column in RAISE_SEQUENCE]
+    derived.append(figure_frame)
+    derived += [None] * (8 - len(derived))
 
     raising = Image.new("RGBA", (CELL_WIDTH * 8, CELL_HEIGHT), (0, 0, 0, 0))
     cells: list[Image.Image] = []
-    for column in range(8):
-        cell = derived[column]
+    for column, cell in enumerate(derived):
         if cell is None:
             continue
         raising.alpha_composite(cell, (column * CELL_WIDTH, 0))
@@ -146,38 +151,42 @@ def contact_sheet(assets: dict[str, list[Image.Image]]) -> None:
         y = row_index * CELL_HEIGHT
         for column, cell in enumerate(cells):
             sheet.alpha_composite(cell, (column * CELL_WIDTH, y))
-        draw.text((6, y + 6), f"{name} raise {RAISE_SEQUENCE} + mirrored arms", fill=(255, 255, 255, 255))
+        draw.text(
+            (6, y + 6),
+            f"{name} raise {RAISE_SEQUENCE} + composed both-arms figure",
+            fill=(255, 255, 255, 255),
+        )
     sheet.save(QA / "raising-atlas-contact-sheet.png")
 
 
 def main() -> None:
+    base_atlas = Image.open(ROOT / "Resources/spritesheet.webp").convert("RGBA")
     assets: dict[str, list[Image.Image]] = {}
     report = {
         "sourceRow": SOURCE_ROW,
-        "sequence": list(RAISE_SEQUENCE),
-        "armStrip": list(ARM_STRIP),
+        "sequence": list(RAISE_SEQUENCE) + ["composed-o-pose"],
+        "figureBox": list(FIGURE_BOX),
+        "anchors": {"headTop": HEAD_TOP, "feetBottom": FEET_BOTTOM, "faceAxis": FACE_AXIS},
         "cell": [CELL_WIDTH, CELL_HEIGHT],
         "roles": [],
     }
     for source_name, output_name in ROLES.items():
         source_path = ROOT / source_name
         output_path = ROOT / output_name
-        cells = derive(source_path, output_path)
+        role_atlas = Image.open(source_path).convert("RGBA")
+        cells = derive(source_path, output_path, base_atlas)
         assets[source_path.name] = cells
         saved = Image.open(output_path).convert("RGBA")
-        atlas = Image.open(source_path).convert("RGBA")
         role_report = {
             "source": source_name,
             "output": output_name,
             "size": list(saved.size),
-            "symmetryAxis": SYMMETRY_AXES[source_name],
             "cells": [
                 {
                     "index": index,
-                    "sourceColumn": RAISE_SEQUENCE[index] if index < len(RAISE_SEQUENCE) else 3,
                     "bbox": list(cell.getbbox() or (0, 0, 0, 0)),
                     "matches_source_frame": (
-                        cell.tobytes() == frame(atlas, RAISE_SEQUENCE[index]).tobytes()
+                        cell.tobytes() == frame(role_atlas, RAISE_SEQUENCE[index]).tobytes()
                         if index < len(RAISE_SEQUENCE)
                         else False
                     ),

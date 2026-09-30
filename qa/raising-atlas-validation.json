@@ -3,14 +3,20 @@
   "sequence": [
     0,
     1,
-    2
+    2,
+    "composed-o-pose"
   ],
-  "armStrip": [
-    112,
-    166,
-    46,
-    146
+  "figureBox": [
+    82,
+    218,
+    110,
+    249
   ],
+  "anchors": {
+    "headTop": 46,
+    "feetBottom": 178,
+    "faceAxis": 83.5
+  },
   "cell": [
     192,
     208
@@ -23,11 +29,9 @@
         1536,
         208
       ],
-      "symmetryAxis": 83.5,
       "cells": [
         {
           "index": 0,
-          "sourceColumn": 0,
           "bbox": [
             36,
             49,
@@ -38,7 +42,6 @@
         },
         {
           "index": 1,
-          "sourceColumn": 1,
           "bbox": [
             36,
             48,
@@ -49,7 +52,6 @@
         },
         {
           "index": 2,
-          "sourceColumn": 2,
           "bbox": [
             29,
             47,
@@ -60,11 +62,10 @@
         },
         {
           "index": 3,
-          "sourceColumn": 3,
           "bbox": [
-            4,
+            24,
             46,
-            164,
+            143,
             178
           ],
           "matches_source_frame": false
@@ -79,11 +80,9 @@
         1536,
         208
       ],
-      "symmetryAxis": 83.5,
       "cells": [
         {
           "index": 0,
-          "sourceColumn": 0,
           "bbox": [
             20,
             29,
@@ -94,7 +93,6 @@
         },
         {
           "index": 1,
-          "sourceColumn": 1,
           "bbox": [
             20,
             28,
@@ -105,7 +103,6 @@
         },
         {
           "index": 2,
-          "sourceColumn": 2,
           "bbox": [
             20,
             26,
@@ -116,10 +113,9 @@
         },
         {
           "index": 3,
-          "sourceColumn": 3,
           "bbox": [
-            4,
-            25,
+            20,
+            29,
             176,
             178
           ],
