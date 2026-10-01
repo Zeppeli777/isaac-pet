@@ -31,6 +31,10 @@ public sealed class PetController
     private readonly SettingsStore _settingsStore;
     private readonly SpeechBubbleWindow _speechBubble = new();
     private readonly EmoteBubbleWindow _emoteBubble = new();
+    private readonly CardRevealWindow _cardReveal = new();
+    private readonly CardBubbleWindow _cardBubble = new();
+    private CancellationTokenSource? _cardDrawCts;
+    private int _cardDrawSession;
     private readonly TodoStore _todoStore;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly DispatcherTimer _timer;
@@ -122,7 +126,8 @@ public sealed class PetController
                 definition.SpriteSheetName,
                 definition.Subdirectory,
                 definition.ShootingAtlasName,
-                definition.VerticalWalkingName);
+                definition.VerticalWalkingName,
+                definition.RaisingAtlasName);
         }
         catch (Exception)
         {
@@ -474,7 +479,10 @@ public sealed class PetController
         var frameIndex = spec.FrameIndex(now - _stateStartedAt);
         var key = $"{animation}-{frameIndex}";
         if (_currentFrameKey == key) return;
-        SetFrame(_atlas.Frame(animation, frameIndex));
+        // 举卡抽牌从派生的举臂辅助图集渲染，不使用规格里记录的行。
+        SetFrame(animation == AnimationID.DrawCard
+            ? _atlas.RaisingFrame(frameIndex)
+            : _atlas.Frame(animation, frameIndex));
         _currentFrameKey = key;
     }
 
@@ -752,6 +760,8 @@ public sealed class PetController
         if (screen == null) return;
         _speechBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
         _emoteBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
+        _cardReveal.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
+        _cardBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
     }
 
     // ---------- 专注计时 ----------
@@ -957,6 +967,7 @@ public sealed class PetController
         _isPlayMode = true;
         _speechBubble.HideBubble();
         _emoteBubble.Hide();
+        CancelCardDraw();
         _targetX = null;
         _actionEndsAt = null;
         _hoveredSince = null;
@@ -1029,6 +1040,82 @@ public sealed class PetController
 
     public void ShowCustomSpeech(string rawText) => ShowSpeech(rawText);
 
+    /// <summary>抽一张塔罗牌：举牌动画 → 洗牌/放大揭示 → 结果面板。</summary>
+    public void DrawTarotCard()
+    {
+        if (_isPlayMode) return;
+        var card = TarotDrawPolicy.Draw();
+        Perform(AnimationID.DrawCard);
+        // 双手举起的姿势保持到洗牌与揭示全部结束。
+        _actionEndsAt = Now()
+            + TarotDrawPolicy.RaiseTransitionDuration.TotalSeconds
+            + TarotDrawPolicy.RevealDuration.TotalSeconds
+            + 0.2;
+        _cardDrawCts?.Cancel();
+        _cardDrawCts = new CancellationTokenSource();
+        _cardDrawSession++;
+        var session = _cardDrawSession;
+        var token = _cardDrawCts.Token;
+        _ = RunCardDrawAsync(card, session, token);
+    }
+
+    private async Task RunCardDrawAsync(TarotCard card, int session, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(TarotDrawPolicy.RaiseTransitionDuration, token);
+            if (session != _cardDrawSession || token.IsCancellationRequested) return;
+            var screen = CurrentScreen();
+            if (screen == null) return;
+            SpriteFrame icon;
+            SpriteFrame back;
+            try
+            {
+                icon = _atlas.CardFrame(card);
+                back = _atlas.CardBackFrame();
+            }
+            catch
+            {
+                // 卡面素材缺失时跳过动画，直接展示文字面板。
+                ShowCardPanel(card);
+                return;
+            }
+            _speechBubble.HideBubble();
+            _emoteBubble.Hide();
+            _cardBubble.Hide();
+            _cardReveal.Prepare(icon, back, PetFrameDip(), screen.WorkingArea, _settings.Scale);
+            while (_cardReveal.IsShowing && !token.IsCancellationRequested)
+            {
+                await Task.Delay(16, token);
+            }
+            if (token.IsCancellationRequested || session != _cardDrawSession) return;
+            ShowCardPanel(card);
+        }
+        catch (OperationCanceledException)
+        {
+            // 重新抽卡或退出游玩模式时会取消上一次流程。
+        }
+        catch (Exception)
+        {
+            // 揭示流程失败不影响桌宠本体。
+        }
+    }
+
+    private void ShowCardPanel(TarotCard card)
+    {
+        var screen = CurrentScreen();
+        if (screen == null) return;
+        _cardBubble.Show(card, _atlas.CardFrame(card), PetFrameDip(), screen.WorkingArea, _settings.Scale);
+    }
+
+    private void CancelCardDraw()
+    {
+        _cardDrawCts?.Cancel();
+        _cardDrawCts = null;
+        _cardReveal.Hide();
+        _cardBubble.Hide();
+    }
+
     public void ChangeScale(double scale)
     {
         var oldLeft = _window.Left;
@@ -1091,7 +1178,8 @@ public sealed class PetController
                 definition.SpriteSheetName,
                 definition.Subdirectory,
                 definition.ShootingAtlasName,
-                definition.VerticalWalkingName);
+                definition.VerticalWalkingName,
+                definition.RaisingAtlasName);
         }
         catch (Exception error)
         {
@@ -1116,6 +1204,7 @@ public sealed class PetController
     {
         _timer.Stop();
         RemoveAllProjectiles();
+        CancelCardDraw();
         _emoteBubble.Hide();
         _speechBubble.HideBubble();
         _speechBubble.Close();

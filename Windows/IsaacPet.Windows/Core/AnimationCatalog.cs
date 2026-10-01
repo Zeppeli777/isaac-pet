@@ -14,6 +14,8 @@ public enum AnimationID
     Waiting,
     ThumbsUp,
     Observe,
+    /// <summary>举卡抽牌动作。从派生的举臂辅助图集渲染，不使用规格里的行。</summary>
+    DrawCard,
 }
 
 public readonly record struct AnimationSpec(int Row, int FrameCount, double FrameDuration, bool Loops)
@@ -179,6 +181,8 @@ public static class AnimationCatalog
     public const int Rows = 11;
     public const int VerticalWalkingColumns = 8;
     public const int VerticalWalkingRows = 2;
+    public const int RaisingColumns = 8;
+    public const int RaisingRows = 1;
 
     public static readonly IReadOnlyDictionary<AnimationID, AnimationSpec> Specs =
         new Dictionary<AnimationID, AnimationSpec>
@@ -192,6 +196,8 @@ public static class AnimationCatalog
             [AnimationID.Waiting] = new(Row: 6, FrameCount: 6, FrameDuration: 0.16, Loops: false),
             [AnimationID.ThumbsUp] = new(Row: 7, FrameCount: 6, FrameDuration: 0.15, Loops: false),
             [AnimationID.Observe] = new(Row: 8, FrameCount: 6, FrameDuration: 0.15, Loops: false),
+            // 行号是该动作派生自的 thumbsUp 源行；举卡动画实际从举臂辅助图集渲染。
+            [AnimationID.DrawCard] = new(Row: 7, FrameCount: 4, FrameDuration: 0.13, Loops: false),
         };
 
     public static readonly IReadOnlyDictionary<VerticalWalkingDirection, AnimationSpec> VerticalWalkingSpecs =

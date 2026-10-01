@@ -183,6 +183,27 @@ public static class SelfCheck
         Check(FocusSessionPolicy.DurationText(TimeSpan.FromMinutes(25)) == "25 分钟" &&
               FocusSessionPolicy.DurationText(TimeSpan.FromSeconds(90)) == "90 秒", "时长文案整分钟归一");
 
+        // 14. 塔罗牌组与抽卡策略
+        Check(TarotDeck.Cards.Count == TarotDeck.ArcanaCount * 2, "塔罗牌组含 22 正位 + 22 逆位");
+        Check(TarotDeck.Cards.Select(card => card.Id).Distinct().Count() == TarotDeck.Cards.Count, "塔罗卡牌 ID 唯一");
+        Check(TarotDeck.Cards.Count == TarotDeck.Cards.Count(card => TarotDeck.Card(card.NumeralIndex, card.IsReversed) != null),
+            "按编号与正逆位可检索到每张牌");
+        Check(TarotDeck.Cards.First(card => !card.IsReversed).NameZh == "0-愚者", "牌组以愚者开头");
+        Check(TarotDeck.Cards.Last(card => !card.IsReversed).NameZh == "XXI-世界", "正位以世界结尾");
+        Check(TarotDeck.Cards.Where(card => card.IsReversed).All(card => card.Unlock != null) &&
+              TarotDeck.Cards.Where(card => !card.IsReversed).All(card => card.Unlock == null),
+            "仅逆位牌带解锁条件");
+        Check(TarotDeck.Cards.All(card => card.EffectLines.Length > 0), "每张牌都有使用效果说明");
+        Check(TarotCardIconResources(TarotDeck.Cards), "44 张牌面图标资源名符合 Tarot00…TarotReversed21 规则");
+        var drawnNormal = TarotDrawPolicy.Draw(() => 0.9);
+        Check(!drawnNormal.IsReversed && drawnNormal.NumeralIndex == (int)(0.9 * TarotDeck.ArcanaCount), "抽卡按注入随机数取正位编号");
+        var drawnReversed = TarotDrawPolicy.Draw(() => 0.1);
+        Check(drawnReversed.IsReversed, "低于逆位概率阈值时抽到逆位");
+        Check(TarotDrawPolicy.DisplayTitle(drawnReversed).StartsWith("逆位 · ") &&
+              !TarotDrawPolicy.DisplayTitle(drawnNormal).StartsWith("逆位"), "逆位标题带标记");
+        Check(AnimationCatalog.SpecFor(AnimationID.DrawCard).FrameCount == 4, "举卡姿势 4 帧");
+        Check(AnimationCatalog.RaisingColumns == 8 && AnimationCatalog.RaisingRows == 1, "举臂图集 8 列 1 行");
+
         return Report(failures);
     }
 
@@ -192,5 +213,16 @@ public static class SelfCheck
             ? "\n全部检查通过。"
             : $"\n{failures.Count} 项检查失败。");
         return failures.Count == 0 ? 0 : 1;
+    }
+
+    private static bool TarotCardIconResources(IReadOnlyList<TarotCard> cards)
+    {
+        var expected = new HashSet<string>();
+        for (var index = 0; index < TarotDeck.ArcanaCount; index++)
+        {
+            expected.Add($"Tarot{index:00}");
+            expected.Add($"TarotReversed{index:00}");
+        }
+        return cards.All(card => expected.Contains(card.IconResource));
     }
 }

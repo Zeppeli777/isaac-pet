@@ -106,6 +106,16 @@ public partial class App : System.Windows.Application
             };
             timer.Start();
         }
+        else if (e.Args.Contains("--show-tarot") && _pet != null)
+        {
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                _pet.DrawTarotCard();
+            };
+            timer.Start();
+        }
     }
 
     private void ShowTodoWindow(bool focusComposer)

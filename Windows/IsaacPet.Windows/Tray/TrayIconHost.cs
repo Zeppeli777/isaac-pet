@@ -66,6 +66,7 @@ public sealed class TrayIconHost : IDisposable
             var text = Ui.TextInputDialog.Prompt("让 Isaac 说什么？", "内容只会显示在本机桌面，不会上传。", "输入文字或颜文字（最多 80 字）", "显示气泡");
             if (text != null) controller.ShowCustomSpeech(text);
         }, disableInPlayMode: true);
+        Add("抽张塔罗牌", controller.DrawTarotCard, disableInPlayMode: true);
 
         _llmAskItem = Add("问 Isaac（LLM）…", askLlm, disableInPlayMode: true);
         _llmSettingsItem = Add("LLM 设置…", configureLlm, disableInPlayMode: true);

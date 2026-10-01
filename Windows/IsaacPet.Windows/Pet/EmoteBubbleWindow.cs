@@ -60,7 +60,8 @@ public sealed class EmoteBubbleWindow : TransparentTopmostWindow
         UpdatePosition();
     }
 
-    public void Hide()
+    /// <summary>隐藏表情气泡（有意遮蔽 Window.Hide：先取消自动隐藏计时器再收窗）。</summary>
+    public new void Hide()
     {
         _hideTimer?.Stop();
         _hideTimer = null;

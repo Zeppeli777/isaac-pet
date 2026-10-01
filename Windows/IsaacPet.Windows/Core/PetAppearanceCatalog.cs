@@ -17,7 +17,8 @@ public sealed record PetAppearanceDefinition(
     string SpriteSheetName,
     string? Subdirectory,
     string? ShootingAtlasName = null,
-    string? VerticalWalkingName = null);
+    string? VerticalWalkingName = null,
+    string? RaisingAtlasName = null);
 
 public static class PetAppearanceCatalog
 {
@@ -26,7 +27,8 @@ public static class PetAppearanceCatalog
         new(PetAppearanceID.Isaac, "Isaac（默认）", "Isaac", "spritesheet", null),
         new(PetAppearanceID.Magdalene, "Magdalene", "Magdalene", "magdalene-spritesheet", "Agents",
             ShootingAtlasName: "magdalene-shooting-atlas",
-            VerticalWalkingName: "magdalene-walking-vertical-atlas"),
+            VerticalWalkingName: "magdalene-walking-vertical-atlas",
+            RaisingAtlasName: "magdalene-raising-atlas"),
         new(PetAppearanceID.Judas, "Judas", "Judas", "judas-spritesheet", "Agents"),
     ];
 
