@@ -29,7 +29,7 @@
 ## 平台状态
 
 - macOS 13+：已实现，使用 Swift 6 和 AppKit
-- Windows 10/11：初步移植（.NET 8 + WPF），见 [Windows/README.md](Windows/README.md)。核心桌宠、游玩模式、Todo、LLM 对话已可用；Notion 同步与专注计时尚未移植
+- Windows 10/11：移植（.NET 8 + WPF），见 [Windows/README.md](Windows/README.md)。核心桌宠、游玩模式、Todo、LLM 对话、像素 UI、表情气泡、塔罗抽牌与专注计时已与 macOS 版对齐；Notion 同步尚未移植
 
 ## 系统要求
 
