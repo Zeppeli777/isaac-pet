@@ -66,25 +66,46 @@ public sealed class TrayIconHost : IDisposable
             var text = Ui.TextInputDialog.Prompt("让 Isaac 说什么？", "内容只会显示在本机桌面，不会上传。", "输入文字或颜文字（最多 80 字）", "显示气泡");
             if (text != null) controller.ShowCustomSpeech(text);
         }, disableInPlayMode: true);
-        Add("抽张塔罗牌", controller.DrawTarotCard, disableInPlayMode: true);
+        _menu.Items.Add(new ToolStripSeparator());
 
-        _llmAskItem = Add("问 Isaac（LLM）…", askLlm, disableInPlayMode: true);
-        _llmSettingsItem = Add("LLM 设置…", configureLlm, disableInPlayMode: true);
-        _llmDisconnectItem = Add("断开 LLM", disconnectLlm, disableInPlayMode: true);
-        _llmCancelItem = Add("取消 LLM 请求", cancelLlmRequest, disableInPlayMode: true);
+        // 菜单按领域分组（对应 macOS 版 feature/menu-grouping）：
+        // 常用气泡操作留在第一层，动作、对话、任务、设置各成子菜单并配像素图标。
+        var actionMenu = new ToolStripMenuItem("动作");
+        AddTo(actionMenu, "招手", controller.Wave, disableInPlayMode: true);
+        AddTo(actionMenu, "跳一下", controller.Jump, disableInPlayMode: true);
+        AddTo(actionMenu, "哭一下", controller.Cry, disableInPlayMode: true);
+        AddTo(actionMenu, "赞一个", controller.ThumbsUp, disableInPlayMode: true);
+        AddTo(actionMenu, "观察一下", controller.Observe, disableInPlayMode: true);
+        actionMenu.DropDownItems.Add(new ToolStripSeparator());
+        AddTo(actionMenu, "抽张塔罗牌", controller.DrawTarotCard, disableInPlayMode: true);
+        SetGroupIcon(actionMenu, "Action");
+        _menu.Items.Add(actionMenu);
+        _menu.Items.Add(new ToolStripSeparator());
+
+        var chatMenu = new ToolStripMenuItem("对话");
+        _llmAskItem = AddTo(chatMenu, "问 Isaac（LLM）…", askLlm, disableInPlayMode: true);
+        chatMenu.DropDownItems.Add(new ToolStripSeparator());
+        _llmSettingsItem = AddTo(chatMenu, "LLM 设置…", configureLlm, disableInPlayMode: true);
+        _llmDisconnectItem = AddTo(chatMenu, "断开 LLM", disconnectLlm, disableInPlayMode: true);
+        _llmCancelItem = AddTo(chatMenu, "取消 LLM 请求", cancelLlmRequest, disableInPlayMode: true);
+        SetGroupIcon(chatMenu, "Chat");
+        _menu.Items.Add(chatMenu);
         _menu.Items.Add(new ToolStripSeparator());
 
         _todoRoot = new ToolStripMenuItem("Todo");
         AddTo(_todoRoot, "新建 Todo…", addTodo, disableInPlayMode: true);
         AddTo(_todoRoot, "查看 Todo…", showTodoWindow, disableInPlayMode: true);
         _nextTodoItem = AddTo(_todoRoot, "显示下一个 Todo", showNextTodo, disableInPlayMode: true);
-        _menu.Items.Add(_todoRoot);
-        _menu.Items.Add(new ToolStripSeparator());
 
         var focusMenu = new ToolStripMenuItem("专注计时");
         _startFocusItem = AddTo(focusMenu, "开始专注计时…", startFocusTimer, disableInPlayMode: true);
         _cancelFocusItem = AddTo(focusMenu, "取消专注计时", cancelFocusTimer, disableInPlayMode: true);
-        _menu.Items.Add(focusMenu);
+
+        var taskMenu = new ToolStripMenuItem("任务");
+        taskMenu.DropDownItems.Add(_todoRoot);
+        taskMenu.DropDownItems.Add(focusMenu);
+        SetGroupIcon(taskMenu, "Tasks");
+        _menu.Items.Add(taskMenu);
         _menu.Items.Add(new ToolStripSeparator());
 
         var appearanceMenu = new ToolStripMenuItem("桌宠形象");
@@ -96,17 +117,6 @@ public sealed class TrayIconHost : IDisposable
             appearanceMenu.DropDownItems.Add(item);
             _playModeDisabledItems.Add(item);
         }
-        _menu.Items.Add(appearanceMenu);
-        _menu.Items.Add(new ToolStripSeparator());
-
-        _roamingItem = Add("暂停走动", () => { controller.ToggleRoaming(); }, disableInPlayMode: true);
-        _menu.Items.Add(new ToolStripSeparator());
-        Add("招手", controller.Wave, disableInPlayMode: true);
-        Add("跳一下", controller.Jump, disableInPlayMode: true);
-        Add("哭一下", controller.Cry, disableInPlayMode: true);
-        Add("赞一个", controller.ThumbsUp, disableInPlayMode: true);
-        Add("观察一下", controller.Observe, disableInPlayMode: true);
-        _menu.Items.Add(new ToolStripSeparator());
 
         var sizeMenu = new ToolStripMenuItem("大小");
         foreach (var (title, scale) in new (string, double)[] { ("75%", 0.75), ("100%", 1.0), ("125%", 1.25) })
@@ -116,9 +126,13 @@ public sealed class TrayIconHost : IDisposable
             _scaleItems.Add((item, scale));
             sizeMenu.DropDownItems.Add(item);
         }
-        _menu.Items.Add(sizeMenu);
 
-        _launchAtLoginItem = Add("登录时启动", () =>
+        var settingsMenu = new ToolStripMenuItem("设置");
+        settingsMenu.DropDownItems.Add(appearanceMenu);
+        settingsMenu.DropDownItems.Add(sizeMenu);
+        settingsMenu.DropDownItems.Add(new ToolStripSeparator());
+        _roamingItem = AddTo(settingsMenu, "暂停走动", () => { controller.ToggleRoaming(); }, disableInPlayMode: true);
+        _launchAtLoginItem = AddTo(settingsMenu, "登录时启动", () =>
         {
             try { controller.ToggleLaunchAtLogin(); }
             catch (Exception error)
@@ -126,7 +140,10 @@ public sealed class TrayIconHost : IDisposable
                 Ui.Pixel.PixelDialog.ShowMessage("无法更改登录启动设置", error.Message);
             }
         });
-        Add("回到主屏幕", controller.ReturnToMainScreen);
+        AddTo(settingsMenu, "回到主屏幕", controller.ReturnToMainScreen);
+        SetGroupIcon(settingsMenu, "Settings");
+        _menu.Items.Add(settingsMenu);
+
         _menu.Items.Add(new ToolStripSeparator());
         Add("退出 Isaac Pet", quit);
 
@@ -189,6 +206,22 @@ public sealed class TrayIconHost : IDisposable
         parent.DropDownItems.Add(item);
         if (disableInPlayMode) _playModeDisabledItems.Add(item);
         return item;
+    }
+
+    /// <summary>菜单分组根项的 16x16 像素图标（Assets/MenuIcons，与 macOS 版同一套素材）。</summary>
+    private static void SetGroupIcon(ToolStripMenuItem item, string name)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "Assets", "MenuIcons", name + ".png");
+        if (!File.Exists(path)) return;
+        try
+        {
+            item.Image = new Bitmap(path);
+            item.ImageScaling = ToolStripItemImageScaling.None;
+        }
+        catch
+        {
+            // 图标加载失败只影响外观，不影响菜单功能。
+        }
     }
 
     public void UpdateStates()

@@ -193,7 +193,8 @@ public sealed class CardBubbleWindow : TransparentTopmostWindow
         _canvas.Width = Width;
         _canvas.Height = Height;
 
-        var bodyY = _tailEdge == TailEdge.Bottom ? TailHeight : 0;
+        // 尾巴在下方时身体贴顶部；在上方时身体贴底部（macOS y 向上坐标的镜像）。
+        var bodyY = _tailEdge == TailEdge.Bottom ? 0 : TailHeight;
         var bodyRect = new Rect(0, bodyY, Width, Height - TailHeight);
 
         // 阶梯像素外框 + 纸面（PixelStyle.drawFrame 同款）。

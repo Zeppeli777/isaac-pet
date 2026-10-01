@@ -156,7 +156,8 @@ public sealed class SpeechBubbleWindow : TransparentTopmostWindow
         _canvas.Width = Width;
         _canvas.Height = Height;
 
-        var bodyY = _tailEdge == TailEdge.Bottom ? TailHeight + OuterInset : OuterInset;
+        // 尾巴在下方时身体贴顶部；在上方时身体贴底部（macOS y 向上坐标的镜像）。
+        var bodyY = _tailEdge == TailEdge.Bottom ? OuterInset : TailHeight + OuterInset;
         var bodyRect = new Rect(
             OuterInset,
             bodyY,

@@ -59,6 +59,9 @@ CARD_PLAIN_COPIES = ["Cards/CardBack.png"] + [
     f"Cards/Tarot{index:02d}.png" for index in range(22)
 ] + [f"Cards/TarotReversed{index:02d}.png" for index in range(22)]
 
+# 菜单分组根项的像素图标（动作/对话/任务/设置）。
+MENU_ICON_COPIES = [f"MenuIcons/{name}.png" for name in ("Action", "Chat", "Tasks", "Settings")]
+
 PLAIN_COPIES = ["IsaacTear.png", "IsaacTearDrop.png", "EmoteHappy.png", "EmoteSad.png", "EmoteShocked.png", "IsaacPet.png", "StatusIsaac.png"]
 
 
@@ -101,6 +104,16 @@ def main() -> int:
         print(f"ok  {name}（直接复制）")
 
     for name in CARD_PLAIN_COPIES:
+        source = RESOURCES / name
+        if not source.exists():
+            print(f"skip  {name}（未安装）")
+            continue
+        dest = OUT / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, dest)
+        print(f"ok  {name}（直接复制）")
+
+    for name in MENU_ICON_COPIES:
         source = RESOURCES / name
         if not source.exists():
             print(f"skip  {name}（未安装）")
