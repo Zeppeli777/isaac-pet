@@ -7,6 +7,7 @@ using IsaacPet.Windows.Platform;
 using IsaacPet.Windows.Settings;
 using IsaacPet.Windows.Sprites;
 using IsaacPet.Windows.Ui;
+using IsaacPet.Windows.Ui.Pixel;
 using Point = System.Windows.Point;
 using Size = System.Windows.Size;
 
@@ -70,6 +71,9 @@ public sealed class PetController
 
     public event Action? TodosChanged;
 
+    /// <summary>专注时段结束时触发；宿主用它发托盘气泡（macOS 版走系统通知）。</summary>
+    public event Action<string>? FocusCompleted;
+
     public PetController(SettingsStore settingsStore)
     {
         _settingsStore = settingsStore;
@@ -102,6 +106,7 @@ public sealed class PetController
         ShowIdleFrame();
         _window.Show();
         ShowSpeech("嗨！ :)");
+        RestoreFocusSession();
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.0 / 30) };
         _timer.Tick += (_, _) => Tick();
@@ -747,6 +752,169 @@ public sealed class PetController
         if (screen == null) return;
         _speechBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
         _emoteBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
+    }
+
+    // ---------- 专注计时 ----------
+
+    private CancellationTokenSource? _focusCts;
+    private DateTimeOffset? _focusDeadline;
+
+    public bool FocusRunning => _focusCts != null;
+
+    public void StartFocusTimer()
+    {
+        if (_isPlayMode || FocusRunning) return;
+        _targetX = null;
+        PresentFocusComposer();
+    }
+
+    public void CancelFocusTimer() => _focusCts?.Cancel();
+
+    public string FocusRemainingText()
+    {
+        if (_focusDeadline is not { } deadline) return FocusSessionPolicy.ClockText(0);
+        return FocusSessionPolicy.ClockText(FocusSessionPolicy.RemainingSeconds(deadline, DateTimeOffset.Now));
+    }
+
+    private void PresentFocusComposer()
+    {
+        var targetBox = PixelStyle.CreateField("要专注做什么？（可留空，最多 80 字）");
+        var durationBox = new System.Windows.Controls.ComboBox
+        {
+            ItemsSource = new[] { "15 分钟", "25 分钟", "45 分钟" },
+            SelectedIndex = 1,
+            Width = 160,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+        };
+        var testSeconds = Environment.GetEnvironmentVariable("ISAAC_FOCUS_DURATION_SECONDS");
+        if (testSeconds != null)
+        {
+            durationBox.Items.Add($"测试时长（{FocusSessionPolicy.DurationText(FocusSessionPolicy.DurationFromSeconds(testSeconds))}）");
+            durationBox.SelectedIndex = durationBox.Items.Count - 1;
+        }
+
+        var window = new PixelWindow("专注计时", resizable: false)
+        {
+            Width = 480,
+            SizeToContent = SizeToContent.Height,
+            ResizeMode = ResizeMode.NoResize,
+        };
+        var root = new System.Windows.Controls.StackPanel();
+        root.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "计时完全在本机运行。结束后会弹窗提醒；也可以随时在菜单里取消。",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+        root.Children.Add(new System.Windows.Controls.TextBlock { Text = "专注目标" });
+        root.Children.Add(targetBox);
+        root.Children.Add(new System.Windows.Controls.TextBlock { Text = "时长", Margin = new Thickness(0, 8, 0, 0) });
+        root.Children.Add(durationBox);
+        var started = false;
+        var buttons = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0),
+        };
+        var startButton = new PixelButton { Content = "开始专注", IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        var cancelButton = new PixelButton { Content = "取消", IsCancel = true };
+        startButton.Click += (_, _) => { started = true; window.Close(); };
+        buttons.Children.Add(startButton);
+        buttons.Children.Add(cancelButton);
+        root.Children.Add(buttons);
+        window.SetContent(root);
+        window.ShowDialog();
+
+        if (!started) return;
+        TimeSpan duration;
+        if (durationBox.SelectedIndex is >= 0 and <= 2)
+        {
+            duration = TimeSpan.FromMinutes(new[] { 15, 25, 45 }[durationBox.SelectedIndex]);
+        }
+        else
+        {
+            duration = testSeconds != null
+                ? FocusSessionPolicy.DurationFromSeconds(testSeconds)
+                : FocusSessionPolicy.DefaultDuration;
+        }
+        StartFocusSession(NormalizedFocusTarget(targetBox.Text), duration);
+    }
+
+    private static string? NormalizedFocusTarget(string? rawValue)
+    {
+        var value = rawValue?.Trim();
+        if (string.IsNullOrEmpty(value)) return null;
+        return value[..Math.Min(value.Length, 80)];
+    }
+
+    private void StartFocusSession(string? target, TimeSpan duration)
+    {
+        if (_isPlayMode || FocusRunning) return;
+        var safeDuration = duration > FocusSessionPolicy.MaximumDuration ? FocusSessionPolicy.MaximumDuration : duration;
+        if (safeDuration < TimeSpan.FromSeconds(1)) safeDuration = TimeSpan.FromSeconds(1);
+        var deadline = DateTimeOffset.Now + safeDuration;
+        _focusDeadline = deadline;
+        _settingsStore.FocusDeadline = deadline;
+        _settingsStore.FocusTarget = target;
+        Perform(AnimationID.Observe);
+        ShowSpeech($"专注开始！{FocusSessionPolicy.DurationText(safeDuration)}后见。");
+        BeginFocusCountdown(deadline, target);
+    }
+
+    private async void BeginFocusCountdown(DateTimeOffset deadline, string? target)
+    {
+        _focusCts = new CancellationTokenSource();
+        var token = _focusCts.Token;
+        try
+        {
+            var remaining = deadline - DateTimeOffset.Now;
+            if (remaining > TimeSpan.Zero) await Task.Delay(remaining, token);
+            ClearFocusSession();
+            PresentFocusCompletion(target);
+            ThumbsUp();
+            ShowSpeech("专注完成！起来休息一下吧。");
+        }
+        catch (OperationCanceledException)
+        {
+            ClearFocusSession();
+            ShowSpeech("专注计时已取消。");
+        }
+        catch (Exception error)
+        {
+            ClearFocusSession();
+            ShowSpeech($"专注计时失败：{error.Message}");
+        }
+    }
+
+    private void ClearFocusSession()
+    {
+        _focusCts = null;
+        _focusDeadline = null;
+        _settingsStore.FocusDeadline = null;
+        _settingsStore.FocusTarget = null;
+    }
+
+    private void RestoreFocusSession()
+    {
+        if (_settingsStore.FocusDeadline is not { } deadline) return;
+        if (deadline <= DateTimeOffset.Now)
+        {
+            ClearFocusSession();
+            ShowSpeech("刚才的专注时段已经结束啦。");
+            return;
+        }
+        ShowSpeech("已恢复专注计时。");
+        BeginFocusCountdown(deadline, _settingsStore.FocusTarget);
+    }
+
+    private void PresentFocusCompletion(string? target)
+    {
+        var subject = target == null ? "" : $"\n\n目标：{target}";
+        FocusCompleted?.Invoke("专注结束：起来休息一下吧。");
+        PixelDialog.ShowMessage(
+            "专注完成",
+            $"起来休息一下，再决定下一步。{subject}\n托盘气泡会同时提醒，桌面气泡始终有效。");
     }
 
     // ---------- Todo 提醒 ----------

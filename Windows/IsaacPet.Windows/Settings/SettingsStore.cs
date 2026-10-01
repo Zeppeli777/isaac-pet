@@ -20,6 +20,8 @@ public sealed class SettingsStore
         public string? LlmModel { get; set; }
         public bool LlmCredentialConfigured { get; set; }
         public string ActiveAppearance { get; set; } = "isaac";
+        public DateTimeOffset? FocusDeadline { get; set; }
+        public string? FocusTarget { get; set; }
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
@@ -80,6 +82,19 @@ public sealed class SettingsStore
     {
         get => _persisted.ActiveAppearance;
         set { _persisted.ActiveAppearance = value; Commit(); }
+    }
+
+    /// <summary>持久化运行中的专注倒计时，重启后可恢复。</summary>
+    public DateTimeOffset? FocusDeadline
+    {
+        get => _persisted.FocusDeadline;
+        set { _persisted.FocusDeadline = value; Commit(); }
+    }
+
+    public string? FocusTarget
+    {
+        get => _persisted.FocusTarget;
+        set { _persisted.FocusTarget = value; Commit(); }
     }
 
     private Persisted LoadPersisted()

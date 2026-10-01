@@ -29,12 +29,18 @@ public sealed class TrayIconHost : IDisposable
     private readonly List<(ToolStripMenuItem Item, PetAppearanceID Appearance)> _appearanceItems = [];
     private readonly List<ToolStripItem> _playModeDisabledItems = [];
     private ToolStripMenuItem _nextTodoItem = null!;
+    private ToolStripMenuItem _startFocusItem = null!;
+    private ToolStripMenuItem _cancelFocusItem = null!;
 
     public TrayIconHost(
         PetController controller,
         Action showTodoWindow,
         Action addTodo,
         Action showNextTodo,
+        Action startFocusTimer,
+        Action cancelFocusTimer,
+        Func<bool> focusRunning,
+        Func<string> focusRemainingText,
         Action configureLlm,
         Action askLlm,
         Action disconnectLlm,
@@ -72,6 +78,12 @@ public sealed class TrayIconHost : IDisposable
         AddTo(_todoRoot, "查看 Todo…", showTodoWindow, disableInPlayMode: true);
         _nextTodoItem = AddTo(_todoRoot, "显示下一个 Todo", showNextTodo, disableInPlayMode: true);
         _menu.Items.Add(_todoRoot);
+        _menu.Items.Add(new ToolStripSeparator());
+
+        var focusMenu = new ToolStripMenuItem("专注计时");
+        _startFocusItem = AddTo(focusMenu, "开始专注计时…", startFocusTimer, disableInPlayMode: true);
+        _cancelFocusItem = AddTo(focusMenu, "取消专注计时", cancelFocusTimer, disableInPlayMode: true);
+        _menu.Items.Add(focusMenu);
         _menu.Items.Add(new ToolStripSeparator());
 
         var appearanceMenu = new ToolStripMenuItem("桌宠形象");
@@ -147,10 +159,20 @@ public sealed class TrayIconHost : IDisposable
         // LLM 状态回调
         _llmRequestRunning = llmRequestRunning;
         _llmCredentialConfigured = llmCredentialConfigured;
+        _focusRunning = focusRunning;
+        _focusRemainingText = focusRemainingText;
+
+        controller.FocusCompleted += message =>
+        {
+            try { _notifyIcon.ShowBalloonTip(3000, "Isaac Pet", message, ToolTipIcon.Info); }
+            catch { /* 通知区域不可用时忽略，桌面气泡和弹窗仍然有效 */ }
+        };
     }
 
     private readonly Func<bool> _llmRequestRunning;
     private readonly Func<bool> _llmCredentialConfigured;
+    private readonly Func<bool> _focusRunning;
+    private readonly Func<string> _focusRemainingText;
 
     private ToolStripMenuItem Add(string title, Action action, bool disableInPlayMode = false)
     {
@@ -178,6 +200,11 @@ public sealed class TrayIconHost : IDisposable
         var pendingCount = TodoPolicy.Pending(_controller.TodoStore.Items).Count;
         _todoRoot.Text = pendingCount == 0 ? "Todo" : $"Todo（{pendingCount}）";
         _nextTodoItem.Enabled = !inPlay && pendingCount > 0;
+
+        var focusRunningNow = _focusRunning();
+        _startFocusItem.Enabled = !inPlay && !focusRunningNow;
+        _cancelFocusItem.Text = focusRunningNow ? $"取消专注计时（剩 {_focusRemainingText()}）" : "取消专注计时";
+        _cancelFocusItem.Enabled = !inPlay && focusRunningNow;
 
         var llmRunning = _llmRequestRunning();
         // 问法跟随当前皮肤的人格名（对应 macOS 版 menuWillOpen 的 title 更新）。

@@ -172,6 +172,17 @@ public static class SelfCheck
             Check(prompt.Length > 80 && prompt.Contains("小桌宠") && prompt.Contains("80 个字"), $"皮肤人格提示词：{appearance}");
         }
 
+        // 13. 专注计时策略
+        Check(FocusSessionPolicy.DefaultDuration == TimeSpan.FromMinutes(25), "专注默认时长 25 分钟");
+        Check(FocusSessionPolicy.DurationFromSeconds(null) == FocusSessionPolicy.DefaultDuration, "无效时长回退默认");
+        Check(FocusSessionPolicy.DurationFromSeconds("3") == TimeSpan.FromSeconds(3), "测试时长解析");
+        Check(FocusSessionPolicy.DurationFromSeconds("999999") == FocusSessionPolicy.MaximumDuration, "时长封顶 2 小时");
+        var focusDeadline = DateTimeOffset.Now.AddSeconds(90.4);
+        Check(FocusSessionPolicy.RemainingSeconds(focusDeadline, DateTimeOffset.Now) is > 89 and <= 91, "剩余秒数向上取整");
+        Check(FocusSessionPolicy.ClockText(1505) == "25:05", "倒计时文案 mm:ss");
+        Check(FocusSessionPolicy.DurationText(TimeSpan.FromMinutes(25)) == "25 分钟" &&
+              FocusSessionPolicy.DurationText(TimeSpan.FromSeconds(90)) == "90 秒", "时长文案整分钟归一");
+
         return Report(failures);
     }
 
