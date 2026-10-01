@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="Assets\**\*.png;Assets\*.png;Assets\*.ico">
+    <None Include="Assets\**\*.png;Assets\*.png;Assets\*.ico;Assets\Fonts\*.ttf;Assets\Fonts\*.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using IsaacPet.Windows.Llm;
+using IsaacPet.Windows.Ui.Pixel;
 using Button = System.Windows.Controls.Button;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
 using Orientation = System.Windows.Controls.Orientation;
@@ -8,24 +9,21 @@ using TextBox = System.Windows.Controls.TextBox;
 
 namespace IsaacPet.Windows.Ui;
 
-/// <summary>简单的模态文本输入框，对应 macOS 版带 accessoryView 的 NSAlert。</summary>
-public sealed class TextInputDialog : Window
+/// <summary>像素风模态文本输入框，对应 macOS 版 PixelDialog.prompt。</summary>
+public sealed class TextInputDialog : PixelWindow
 {
     private readonly TextBox _input;
-    private readonly Button _confirmButton;
 
     public string? Result { get; private set; }
 
     public TextInputDialog(string title, string message, string placeholder, string confirmTitle = "确定")
+        : base(title, resizable: false)
     {
-        Title = title;
-        Width = 420;
+        Width = 460;
         SizeToContent = SizeToContent.Height;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ResizeMode = ResizeMode.NoResize;
-        Topmost = true;
 
-        var root = new StackPanel { Margin = new Thickness(16) };
+        var root = new StackPanel();
         root.Children.Add(new TextBlock
         {
             Text = message,
@@ -33,8 +31,8 @@ public sealed class TextInputDialog : Window
             Margin = new Thickness(0, 0, 0, 10),
         });
 
-        _input = new TextBox { Margin = new Thickness(0, 0, 0, 12) };
-        _input.SetValue(System.Windows.Controls.ToolTipService.ToolTipProperty, placeholder);
+        _input = PixelStyle.CreateField(placeholder);
+        _input.Margin = new Thickness(0, 0, 0, 12);
         root.Children.Add(_input);
 
         var buttons = new StackPanel
@@ -42,14 +40,14 @@ public sealed class TextInputDialog : Window
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
         };
-        _confirmButton = new Button { Content = confirmTitle, Width = 88, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        var cancelButton = new Button { Content = "取消", Width = 88, IsCancel = true };
-        _confirmButton.Click += (_, _) => { Result = _input.Text; DialogResult = true; };
-        buttons.Children.Add(_confirmButton);
+        var confirmButton = new PixelButton { Content = confirmTitle, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        var cancelButton = new PixelButton { Content = "取消", IsCancel = true };
+        confirmButton.Click += (_, _) => { Result = _input.Text; DialogResult = true; };
+        buttons.Children.Add(confirmButton);
         buttons.Children.Add(cancelButton);
         root.Children.Add(buttons);
 
-        Content = root;
+        SetContent(root);
         Loaded += (_, _) => _input.Focus();
     }
 
@@ -61,8 +59,8 @@ public sealed class TextInputDialog : Window
     }
 }
 
-/// <summary>LLM 设置窗口：服务格式、Base URL、API Key（DPAPI 密文存储）、模型和导入配置文件。</summary>
-public sealed class LlmSettingsDialog : Window
+/// <summary>像素风 LLM 设置窗口：服务格式、Base URL、API Key（DPAPI 密文存储）、模型和导入配置文件。</summary>
+public sealed class LlmSettingsDialog : PixelWindow
 {
     private readonly System.Windows.Controls.PasswordBox _tokenBox;
     private readonly TextBox _baseURLBox;
@@ -82,15 +80,13 @@ public sealed class LlmSettingsDialog : Window
     public bool Saved { get; private set; }
 
     public LlmSettingsDialog(bool hasSavedToken, string baseUrl, LlmApiFormat apiFormat, string currentModel)
+        : base("可选 LLM 连接", resizable: false)
     {
-        Title = "可选 LLM 连接";
-        Width = 540;
+        Width = 560;
         SizeToContent = SizeToContent.Height;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ResizeMode = ResizeMode.NoResize;
-        Topmost = true;
 
-        var root = new StackPanel { Margin = new Thickness(16) };
+        var root = new StackPanel();
         root.Children.Add(new TextBlock
         {
             Text = "默认关闭。API Key 仅通过 Windows DPAPI 加密后保存在本机；只有你主动点击「问桌宠（LLM）」时，输入文字才会发送到上面配置的服务。不会发送 Todo、Notion 内容或桌面数据。",
@@ -110,33 +106,36 @@ public sealed class LlmSettingsDialog : Window
         root.Children.Add(_formatBox);
 
         var baseURLRow = new DockPanel();
-        var importButton = new Button { Content = "导入配置文件…", Width = 120 };
+        var importButton = new PixelButton { Content = "导入配置文件…" };
         importButton.Click += (_, _) => ImportConfigFile();
         DockPanel.SetDock(importButton, Dock.Right);
         baseURLRow.Children.Add(importButton);
         var baseURLColumn = new StackPanel();
         baseURLColumn.Children.Add(new TextBlock { Text = "Base URL" });
-        _baseURLBox = new TextBox { Text = baseUrl, Margin = new Thickness(0, 2, 8, 10) };
-        _baseURLBox.SetValue(System.Windows.Controls.ToolTipService.ToolTipProperty, "https://api.openai.com/v1");
+        _baseURLBox = PixelStyle.CreateField("https://api.openai.com/v1");
+        _baseURLBox.Text = baseUrl;
+        _baseURLBox.Margin = new Thickness(0, 2, 8, 10);
         baseURLColumn.Children.Add(_baseURLBox);
         baseURLRow.Children.Add(baseURLColumn);
         root.Children.Add(baseURLRow);
 
         root.Children.Add(new TextBlock { Text = "API Key" });
         _tokenBox = new System.Windows.Controls.PasswordBox { Margin = new Thickness(0, 2, 0, 10) };
-        _tokenBox.SetValue(System.Windows.Controls.ToolTipService.ToolTipProperty,
-            hasSavedToken ? "已保存在本机（留空保持不变）" : "sk-…（本地服务可留空）");
+        _tokenBox.ToolTip = hasSavedToken ? "已保存在本机（留空保持不变）" : "sk-…（本地服务可留空）";
         root.Children.Add(_tokenBox);
 
         root.Children.Add(new TextBlock { Text = "模型" });
-        _modelBox = new TextBox { Text = currentModel, Margin = new Thickness(0, 2, 0, 14), Width = 300, HorizontalAlignment = HorizontalAlignment.Left };
-        _modelBox.SetValue(System.Windows.Controls.ToolTipService.ToolTipProperty, "例如 gpt-5-mini、claude-sonnet-4-5");
+        _modelBox = PixelStyle.CreateField("例如 gpt-5-mini、claude-sonnet-4-5");
+        _modelBox.Text = currentModel;
+        _modelBox.Margin = new Thickness(0, 2, 0, 14);
+        _modelBox.Width = 300;
+        _modelBox.HorizontalAlignment = HorizontalAlignment.Left;
         root.Children.Add(_modelBox);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        var saveButton = new Button { Content = "保存", Width = 80, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        var disconnectButton = new Button { Content = "断开", Width = 80, Margin = new Thickness(0, 0, 8, 0) };
-        var cancelButton = new Button { Content = "取消", Width = 80, IsCancel = true };
+        var saveButton = new PixelButton { Content = "保存", IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        var disconnectButton = new PixelButton { Content = "断开", Margin = new Thickness(0, 0, 8, 0) };
+        var cancelButton = new PixelButton { Content = "取消", IsCancel = true };
         saveButton.Click += (_, _) => { Saved = true; DialogResult = true; };
         disconnectButton.Click += (_, _) => { DisconnectRequested = true; DialogResult = true; };
         buttons.Children.Add(saveButton);
@@ -144,7 +143,7 @@ public sealed class LlmSettingsDialog : Window
         buttons.Children.Add(cancelButton);
         root.Children.Add(buttons);
 
-        Content = root;
+        SetContent(root);
     }
 
     private void ImportConfigFile()
@@ -169,7 +168,7 @@ public sealed class LlmSettingsDialog : Window
         }
         catch (Exception error)
         {
-            System.Windows.MessageBox.Show(this, error.Message, "无法导入配置文件");
+            PixelDialog.ShowMessage("无法导入配置文件", error.Message);
         }
     }
 }

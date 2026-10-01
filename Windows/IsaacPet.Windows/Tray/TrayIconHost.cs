@@ -45,7 +45,11 @@ public sealed class TrayIconHost : IDisposable
     {
         _controller = controller;
 
-        _menu = new ContextMenuStrip();
+        _menu = new ContextMenuStrip
+        {
+            // 菜单标题使用像素字体（对应 macOS 版的 pixel-font menu titles）。
+            Font = Ui.Pixel.PixelFont.MenuFont,
+        };
         _playModeItem = Add("进入游玩模式", () => { controller.TogglePlayMode(); UpdateStates(); });
         _menu.Items.Add(new ToolStripSeparator());
         Add("随机说一句", controller.SayRandomPhrase, disableInPlayMode: true);
@@ -106,7 +110,7 @@ public sealed class TrayIconHost : IDisposable
             try { controller.ToggleLaunchAtLogin(); }
             catch (Exception error)
             {
-                MessageBox.Show(error.Message, "无法更改登录启动设置", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Ui.Pixel.PixelDialog.ShowMessage("无法更改登录启动设置", error.Message);
             }
         });
         Add("回到主屏幕", controller.ReturnToMainScreen);

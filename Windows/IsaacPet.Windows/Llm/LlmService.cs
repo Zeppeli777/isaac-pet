@@ -80,7 +80,7 @@ public sealed class LlmService
         }
         catch (Exception error)
         {
-            System.Windows.MessageBox.Show(error.Message, "无法保存 LLM 设置");
+            Ui.Pixel.PixelDialog.ShowMessage("无法保存 LLM 设置", error.Message);
             return;
         }
         try
@@ -106,7 +106,7 @@ public sealed class LlmService
             }
             else if (existingToken == null)
             {
-                System.Windows.MessageBox.Show("API Key 不能为空（本地服务可在 Base URL 里留空 Key 后填入任意占位符）。", "无法保存 LLM 设置");
+                Ui.Pixel.PixelDialog.ShowMessage("无法保存 LLM 设置", "API Key 不能为空（本地服务可留空 Key，填写任意占位符即可）。");
                 return;
             }
             _settings.LlmBaseUrl = config.BaseUrl;
@@ -116,7 +116,7 @@ public sealed class LlmService
         }
         catch (Exception error)
         {
-            System.Windows.MessageBox.Show(error.Message, "无法保存 LLM 设置");
+            Ui.Pixel.PixelDialog.ShowMessage("无法保存 LLM 设置", error.Message);
         }
     }
 
@@ -199,7 +199,7 @@ public sealed class LlmService
         }
         catch (Exception error)
         {
-            System.Windows.MessageBox.Show(error.Message, "无法断开 LLM");
+            Ui.Pixel.PixelDialog.ShowMessage("无法断开 LLM", error.Message);
         }
     }
 
