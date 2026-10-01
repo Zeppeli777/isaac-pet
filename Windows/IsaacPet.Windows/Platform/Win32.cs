@@ -78,6 +78,20 @@ internal static class Win32
         style = noActivate ? style | WsExNoActivate : style & ~WsExNoActivate;
         SetWindowLongPtr(hwnd, GwlExStyle, new IntPtr(style));
     }
+
+    private const uint SwpNosize = 0x0001;
+    private const uint SwpNomove = 0x0002;
+    private const uint SwpNoactivate = 0x0010;
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
+
+    /// <summary>把 hwnd 排到 belowThis 的 z-order 之下（两者同处最顶层 band 时生效）。</summary>
+    public static void PlaceWindowBelow(IntPtr hwnd, IntPtr belowThis)
+    {
+        if (hwnd == IntPtr.Zero || belowThis == IntPtr.Zero) return;
+        SetWindowPos(hwnd, belowThis, 0, 0, 0, 0, SwpNosize | SwpNomove | SwpNoactivate);
+    }
 }
 
 /// <summary>

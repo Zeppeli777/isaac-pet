@@ -36,6 +36,7 @@ public sealed class SpriteAtlas
     private readonly Dictionary<int, SpriteFrame> _shootingCache = new();
     private readonly Dictionary<(int Row, int Column), SpriteFrame> _verticalWalkingCache = new();
     private SpriteFrame? _cachedTear;
+    private SpriteFrame? _cachedTearDrop;
 
     private SpriteAtlas(BitmapSource source, BitmapSource shooting, BitmapSource verticalWalking, string assetsDirectory)
     {
@@ -132,6 +133,14 @@ public sealed class SpriteAtlas
         var bitmap = LoadPng(Path.Combine(_assetsDirectory, "IsaacTear.png"));
         _cachedTear = ToSpriteFrame(bitmap);
         return _cachedTear;
+    }
+
+    public SpriteFrame TearDropFrame()
+    {
+        if (_cachedTearDrop != null) return _cachedTearDrop;
+        var bitmap = LoadPng(Path.Combine(_assetsDirectory, "IsaacTearDrop.png"));
+        _cachedTearDrop = ToSpriteFrame(bitmap);
+        return _cachedTearDrop;
     }
 
     private SpriteFrame Frame(int row, int column)

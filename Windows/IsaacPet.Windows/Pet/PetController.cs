@@ -23,8 +23,8 @@ public sealed class PetController
     private const double WalkSpeed = 80;      // DIP / 秒
     private const double PlaySpeed = 180;     // DIP / 秒
     private const double TearSpeed = 330;
-    private const double TearLifetime = 1.45;
     private const int MaxProjectiles = 16;
+    private const int MaxDrops = 48;
 
     private readonly PetWindow _window;
     private readonly SettingsStore _settingsStore;
@@ -33,6 +33,7 @@ public sealed class PetController
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly DispatcherTimer _timer;
     private readonly SpriteFrame _tearFrame;
+    private readonly SpriteFrame _tearDropFrame;
 
     private SpriteAtlas _atlas;
     private PetSettings _settings;
@@ -56,10 +57,9 @@ public sealed class PetController
     private double _nextShotAt;
     private Direction8? _shootingPoseDirection;
     private double _shootingPoseEndsAt;
-    private readonly List<Projectile> _projectiles = [];
+    private readonly List<TearProjectile> _projectiles = [];
+    private readonly List<TearDrop> _drops = [];
     private double _nextTodoCheckAt;
-
-    private sealed record Projectile(TearWindow Window, double VelocityX, double VelocityY, double ExpiresAt);
 
     public PetSettings CurrentSettings => _settings;
     public bool IsPlayMode => _isPlayMode;
@@ -84,6 +84,7 @@ public sealed class PetController
             settingsStore.ActiveAppearance = PetAppearanceCatalog.RawValue(PetAppearanceID.Isaac);
         }
         _tearFrame = _atlas.TearFrame();
+        _tearDropFrame = _atlas.TearDropFrame();
 
         var size = ScaledSize();
         _window = new PetWindow(size.Width, size.Height);
@@ -242,46 +243,83 @@ public sealed class PetController
         _currentFrameKey = "";
         if (_projectiles.Count >= MaxProjectiles)
         {
-            var oldest = _projectiles[0];
+            _projectiles[0].Remove();
             _projectiles.RemoveAt(0);
-            oldest.Window.Close();
         }
         var (ux, uy) = PlayInput.UnitVector(direction);
         var centerX = _window.Left + _window.Width / 2 + ux * 26 * _settings.Scale;
         var centerY = _window.Top + _window.Height / 2 - uy * 26 * _settings.Scale;
-        var size = 18 * _settings.Scale;
-        var tear = new TearWindow(_tearFrame, size)
-        {
-            Left = centerX - size / 2,
-            Top = centerY - size / 2,
-        };
-        tear.Show();
-        // 泪弹 y 速度在屏幕上取反（y 向下）。
-        _projectiles.Add(new Projectile(tear, ux * TearSpeed, -uy * TearSpeed, now + TearLifetime));
+        var size = _tearFrame.PixelWidth * _settings.Scale;
+        _projectiles.Add(new TearProjectile(
+            _tearFrame,
+            centerX,
+            centerY,
+            ux * TearSpeed * _settings.Scale,
+            -uy * TearSpeed * _settings.Scale, // 泪弹 y 速度在屏幕上取反（y 向下）
+            size,
+            _settings.Scale,
+            behindPet: direction == Direction8.Up,
+            petHwnd: _window.Hwnd));
     }
 
     private void UpdateProjectiles(double delta, double now)
     {
+        foreach (var projectile in _projectiles) projectile.Update(delta);
+        var bursts = new List<(double X, double Y)>();
         for (var i = _projectiles.Count - 1; i >= 0; i--)
         {
             var projectile = _projectiles[i];
-            projectile.Window.Left += projectile.VelocityX * delta;
-            projectile.Window.Top += projectile.VelocityY * delta;
-            var onAnyScreen = AllScreens().Any(s => s.WorkingArea.Contains(
-                projectile.Window.Left + projectile.Window.Width / 2,
-                projectile.Window.Top + projectile.Window.Height / 2));
-            if (now >= projectile.ExpiresAt || !onAnyScreen)
+            var centerX = projectile.Window.Left + projectile.Window.Width / 2;
+            var centerY = projectile.Window.Top + projectile.Window.Height / 2;
+            var onAnyScreen = AllScreens().Any(s => s.WorkingArea.Contains(centerX, centerY));
+            if (projectile.Landed) bursts.Add((centerX, centerY));
+            if (projectile.Landed || !onAnyScreen)
             {
-                projectile.Window.Close();
+                projectile.Remove();
                 _projectiles.RemoveAt(i);
+            }
+        }
+        foreach (var (x, y) in bursts) SpawnTearBurst(x, y);
+        UpdateDrops(delta);
+    }
+
+    /// <summary>飞完射程的泪弹爆成几颗小水滴，而不是直接消失。</summary>
+    private void SpawnTearBurst(double centerX, double centerY)
+    {
+        if (_drops.Count >= MaxDrops) return;
+        for (var index = 0; index < 4; index++)
+        {
+            var angle = Math.PI * 2 * index / 4 + Random.Shared.NextDouble() * 0.7;
+            var speed = (70 + Random.Shared.NextDouble() * 60) * _settings.Scale;
+            _drops.Add(new TearDrop(
+                _tearDropFrame,
+                centerX,
+                centerY,
+                Math.Cos(angle) * speed,
+                -Math.Abs(Math.Sin(angle)) * speed, // 屏幕 y 向下：爆开的水滴先向上
+                _tearDropFrame.PixelWidth * _settings.Scale,
+                _settings.Scale));
+        }
+    }
+
+    private void UpdateDrops(double delta)
+    {
+        for (var i = _drops.Count - 1; i >= 0; i--)
+        {
+            if (_drops[i].Update(delta))
+            {
+                _drops[i].Remove();
+                _drops.RemoveAt(i);
             }
         }
     }
 
     private void RemoveAllProjectiles()
     {
-        foreach (var projectile in _projectiles) projectile.Window.Close();
+        foreach (var projectile in _projectiles) projectile.Remove();
         _projectiles.Clear();
+        foreach (var drop in _drops) drop.Remove();
+        _drops.Clear();
     }
 
     private void UpdateAttention(double now)
