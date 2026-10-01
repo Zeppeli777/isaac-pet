@@ -14,14 +14,18 @@ public sealed record PetAppearanceDefinition(
     PetAppearanceID Id,
     string DisplayName,
     string SpriteSheetName,
-    string? Subdirectory);
+    string? Subdirectory,
+    string? ShootingAtlasName = null,
+    string? VerticalWalkingName = null);
 
 public static class PetAppearanceCatalog
 {
     public static readonly IReadOnlyList<PetAppearanceDefinition> Definitions =
     [
         new(PetAppearanceID.Isaac, "Isaac（默认）", "spritesheet", null),
-        new(PetAppearanceID.Magdalene, "Magdalene", "magdalene-spritesheet", "Agents"),
+        new(PetAppearanceID.Magdalene, "Magdalene", "magdalene-spritesheet", "Agents",
+            ShootingAtlasName: "magdalene-shooting-atlas",
+            VerticalWalkingName: "magdalene-walking-vertical-atlas"),
         new(PetAppearanceID.Judas, "Judas", "judas-spritesheet", "Agents"),
     ];
 

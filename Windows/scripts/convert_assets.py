@@ -14,6 +14,8 @@ Reads from the repository root:
     Resources/StatusIsaac.png
     Resources/Agents/magdalene-spritesheet.webp
     Resources/Agents/judas-spritesheet.webp
+    Resources/Agents/magdalene-shooting-atlas.webp
+    Resources/Agents/magdalene-walking-vertical-atlas.webp
 
 Writes into Windows/IsaacPet.Windows/Assets/.
 """
@@ -35,13 +37,17 @@ CELL_H = 208
 WEBP_ATLASES = {
     "spritesheet.webp": (CELL_W * 8, CELL_H * 11),
     "shooting-atlas.webp": (CELL_W * 4, CELL_H),
-    "walking-vertical-atlas.webp": (CELL_W * 4, CELL_H * 2),
+    # 竖向行走循环重建后为 8 列（原 4 列）。
+    "walking-vertical-atlas.webp": (CELL_W * 8, CELL_H * 2),
 }
 
 OPTIONAL_ATLASES = {
     # 多角色图集：存在才转换，缺失时 Windows 端与 macOS 端一样回退为 Isaac。
     "Agents/magdalene-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
     "Agents/judas-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
+    # Magdalene 自带的辅助图集：缺失时回退 Isaac 的基础辅助图集。
+    "Agents/magdalene-shooting-atlas.webp": (CELL_W * 4, CELL_H),
+    "Agents/magdalene-walking-vertical-atlas.webp": (CELL_W * 8, CELL_H * 2),
 }
 
 PLAIN_COPIES = ["IsaacTear.png", "IsaacPet.png", "StatusIsaac.png"]

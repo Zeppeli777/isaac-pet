@@ -67,6 +67,13 @@ public static class SelfCheck
         var shootingColumns = Enum.GetValues<Direction8>().Select(AnimationCatalog.ShootingColumn).ToHashSet();
         Check(shootingColumns.SetEquals([0, 1, 2, 3]), "射击姿态列覆盖全部 4 列");
 
+        // 4.5 竖向行走：8 列 2 行，上下各 8 帧
+        Check(AnimationCatalog.VerticalWalkingColumns == 8, "竖向行走图集 8 列");
+        Check(AnimationCatalog.VerticalWalkingRows == 2, "竖向行走图集 2 行");
+        Check(AnimationCatalog.VerticalWalkingSpecFor(VerticalWalkingDirection.Down).FrameCount == 8 &&
+              AnimationCatalog.VerticalWalkingSpecFor(VerticalWalkingDirection.Up).FrameCount == 8,
+            "竖向行走上下各 8 帧");
+
         // 5. Direction8 角度映射抽查（y 向上）
         Check(Direction8Extensions.From(100, 0) == Direction8.Right, "Direction8：+x → Right");
         Check(Direction8Extensions.From(0, 100) == Direction8.Up, "Direction8：+y → Up");

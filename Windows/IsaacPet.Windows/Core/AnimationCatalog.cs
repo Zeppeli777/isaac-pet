@@ -177,7 +177,7 @@ public static class AnimationCatalog
     public const int CellHeight = 208;
     public const int Columns = 8;
     public const int Rows = 11;
-    public const int VerticalWalkingColumns = 4;
+    public const int VerticalWalkingColumns = 8;
     public const int VerticalWalkingRows = 2;
 
     public static readonly IReadOnlyDictionary<AnimationID, AnimationSpec> Specs =
@@ -197,8 +197,8 @@ public static class AnimationCatalog
     public static readonly IReadOnlyDictionary<VerticalWalkingDirection, AnimationSpec> VerticalWalkingSpecs =
         new Dictionary<VerticalWalkingDirection, AnimationSpec>
         {
-            [VerticalWalkingDirection.Down] = new(Row: 0, FrameCount: 4, FrameDuration: 0.09, Loops: true),
-            [VerticalWalkingDirection.Up] = new(Row: 1, FrameCount: 4, FrameDuration: 0.09, Loops: true),
+            [VerticalWalkingDirection.Down] = new(Row: 0, FrameCount: 8, FrameDuration: 0.09, Loops: true),
+            [VerticalWalkingDirection.Up] = new(Row: 1, FrameCount: 8, FrameDuration: 0.09, Loops: true),
         };
 
     public static AnimationSpec SpecFor(AnimationID animation) => Specs[animation];

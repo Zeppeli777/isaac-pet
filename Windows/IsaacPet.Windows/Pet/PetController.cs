@@ -111,7 +111,11 @@ public sealed class PetController
         var definition = PetAppearanceCatalog.DefinitionFor(appearance);
         try
         {
-            return SpriteAtlas.Load(definition.SpriteSheetName, definition.Subdirectory);
+            return SpriteAtlas.Load(
+                definition.SpriteSheetName,
+                definition.Subdirectory,
+                definition.ShootingAtlasName,
+                definition.VerticalWalkingName);
         }
         catch (Exception)
         {
@@ -868,7 +872,11 @@ public sealed class PetController
         var definition = PetAppearanceCatalog.DefinitionFor(appearance);
         try
         {
-            _atlas = SpriteAtlas.Load(definition.SpriteSheetName, definition.Subdirectory);
+            _atlas = SpriteAtlas.Load(
+                definition.SpriteSheetName,
+                definition.Subdirectory,
+                definition.ShootingAtlasName,
+                definition.VerticalWalkingName);
         }
         catch (Exception error)
         {

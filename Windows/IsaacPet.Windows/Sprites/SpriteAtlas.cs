@@ -50,14 +50,16 @@ public sealed class SpriteAtlas
     public static bool AppearanceAvailable(string sheetName) =>
         File.Exists(Path.Combine(AssetsDirectory, sheetName + ".png"));
 
-    public static SpriteAtlas Load(string spriteSheetName = IsaacSheet, string? subdirectory = null)
+    public static SpriteAtlas Load(
+        string spriteSheetName = IsaacSheet,
+        string? subdirectory = null,
+        string? shootingAtlasName = null,
+        string? verticalWalkingName = null)
     {
         var sheetDirectory = subdirectory == null
             ? AssetsDirectory
             : Path.Combine(AssetsDirectory, subdirectory);
         var source = LoadPng(Path.Combine(sheetDirectory, spriteSheetName + ".png"));
-        // 射击、泪弹和竖向行走辅助图集始终沿用基础图集目录（与 macOS 版 SpriteAtlas 架构一致）。
-        var assets = AssetsDirectory;
         var expectedWidth = AnimationCatalog.CellWidth * AnimationCatalog.Columns;
         var expectedHeight = AnimationCatalog.CellHeight * AnimationCatalog.Rows;
         if (source.PixelWidth != expectedWidth || source.PixelHeight != expectedHeight)
@@ -65,13 +67,21 @@ public sealed class SpriteAtlas
             throw new InvalidDataException($"动画图集尺寸错误：{source.PixelWidth}×{source.PixelHeight}。");
         }
 
-        var shooting = LoadPng(Path.Combine(assets, "shooting-atlas.png"));
+        // 角色可以自带射击与竖向行走辅助图集；缺失时回退 Isaac 的基础图集，
+        // 否则该形象在对应姿态下会露出 Isaac 的头部（与 macOS 版行为一致）。
+        var shootingPath = shootingAtlasName == null
+            ? Path.Combine(AssetsDirectory, "shooting-atlas.png")
+            : Path.Combine(sheetDirectory, shootingAtlasName + ".png");
+        var shooting = LoadPng(shootingPath);
         if (shooting.PixelWidth != AnimationCatalog.CellWidth * 4 || shooting.PixelHeight != AnimationCatalog.CellHeight)
         {
             throw new InvalidDataException($"射击姿态尺寸错误：{shooting.PixelWidth}×{shooting.PixelHeight}。");
         }
 
-        var verticalWalking = LoadPng(Path.Combine(assets, "walking-vertical-atlas.png"));
+        var verticalWalkingPath = verticalWalkingName == null
+            ? Path.Combine(AssetsDirectory, "walking-vertical-atlas.png")
+            : Path.Combine(sheetDirectory, verticalWalkingName + ".png");
+        var verticalWalking = LoadPng(verticalWalkingPath);
         var expectedVerticalWidth = AnimationCatalog.CellWidth * AnimationCatalog.VerticalWalkingColumns;
         var expectedVerticalHeight = AnimationCatalog.CellHeight * AnimationCatalog.VerticalWalkingRows;
         if (verticalWalking.PixelWidth != expectedVerticalWidth || verticalWalking.PixelHeight != expectedVerticalHeight)
@@ -79,7 +89,7 @@ public sealed class SpriteAtlas
             throw new InvalidDataException($"上下行走姿态尺寸错误：{verticalWalking.PixelWidth}×{verticalWalking.PixelHeight}。");
         }
 
-        return new SpriteAtlas(source, shooting, verticalWalking, assets);
+        return new SpriteAtlas(source, shooting, verticalWalking, AssetsDirectory);
     }
 
     public SpriteFrame Frame(AnimationID animation, int index)
