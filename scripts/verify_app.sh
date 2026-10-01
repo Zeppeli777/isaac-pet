@@ -72,6 +72,17 @@ CARD_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/Cards/Tarot0
 BACK_WIDTH=$(/usr/bin/sips -g pixelWidth "$APP/Contents/Resources/Cards/CardBack.png" | awk '/pixelWidth/ {print $2}')
 BACK_HEIGHT=$(/usr/bin/sips -g pixelHeight "$APP/Contents/Resources/Cards/CardBack.png" | awk '/pixelHeight/ {print $2}')
 [ "$BACK_WIDTH" = "14" ] && [ "$BACK_HEIGHT" = "18" ] || { echo "Unexpected card back size: ${BACK_WIDTH}x${BACK_HEIGHT}" >&2; exit 1; }
+for icon in Action Chat Tasks Settings; do
+  BASE="$APP/Contents/Resources/MenuIcons/$icon.png"
+  RETINA="$APP/Contents/Resources/MenuIcons/$icon@2x.png"
+  [ -f "$BASE" ] && [ -f "$RETINA" ] || { echo "Missing menu icon $icon" >&2; exit 1; }
+  BASE_WIDTH=$(/usr/bin/sips -g pixelWidth "$BASE" | awk '/pixelWidth/ {print $2}')
+  BASE_HEIGHT=$(/usr/bin/sips -g pixelHeight "$BASE" | awk '/pixelHeight/ {print $2}')
+  [ "$BASE_WIDTH" = "16" ] && [ "$BASE_HEIGHT" = "16" ] || { echo "Unexpected menu icon size: ${BASE_WIDTH}x${BASE_HEIGHT}" >&2; exit 1; }
+  RETINA_WIDTH=$(/usr/bin/sips -g pixelWidth "$RETINA" | awk '/pixelWidth/ {print $2}')
+  RETINA_HEIGHT=$(/usr/bin/sips -g pixelHeight "$RETINA" | awk '/pixelHeight/ {print $2}')
+  [ "$RETINA_WIDTH" = "32" ] && [ "$RETINA_HEIGHT" = "32" ] || { echo "Unexpected retina menu icon size: ${RETINA_WIDTH}x${RETINA_HEIGHT}" >&2; exit 1; }
+done
 echo "atlas: ${WIDTH}x${HEIGHT} RGBA"
 echo "shooting atlas: ${SHOOT_WIDTH}x${SHOOT_HEIGHT} Isaac source frames"
 echo "vertical walking atlas: ${VERTICAL_WALK_WIDTH}x${VERTICAL_WALK_HEIGHT} Isaac source frames"
