@@ -4,8 +4,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using IsaacPet.Windows.Core;
-using Color = System.Windows.Media.Color;
-using FontFamily = System.Windows.Media.FontFamily;
+using IsaacPet.Windows.Ui.Pixel;
 using Point = System.Windows.Point;
 using Rectangle = System.Windows.Shapes.Rectangle;
 using Size = System.Windows.Size;
@@ -13,8 +12,9 @@ using Size = System.Windows.Size;
 namespace IsaacPet.Windows.Pet;
 
 /// <summary>
-/// 像素风对话气泡，移植自 macOS 版 SpeechBubbleController/SpeechBubbleView。
-/// 始终鼠标穿透，锚定在桌宠上方（放不下时放下方）。
+/// 像素风对话气泡：纸面底色 + 阶梯像素描边 + 楼梯状尾巴 + 纸纹斑点，
+/// 文字用 Fusion Pixel 像素字体。移植自 macOS 版 SpeechBubbleController/SpeechBubbleView
+/// （重绘后的游戏内消息框风格）。始终鼠标穿透，锚定在桌宠上方（放不下时放下方）。
 /// </summary>
 public sealed class SpeechBubbleWindow : TransparentTopmostWindow
 {
@@ -23,18 +23,13 @@ public sealed class SpeechBubbleWindow : TransparentTopmostWindow
     private const double TailHeight = 14;
     private const double OuterInset = 3;
     private const double Border = 4;
+    private const double CornerRadius = 7;
     private const double TextHorizontalInset = 13;
     private const double TextVerticalInset = 10;
     private const double MaximumTextWidth = 236;
     private const double MinimumBodyWidth = 88;
     private const double MinimumBodyHeight = 43;
-
-    private static readonly Color OutlineColor = Color.FromRgb(20, 20, 20);
-    private static readonly Color FillColor = Color.FromRgb(255, 245, 209);   // 1.0 / 0.96 / 0.82
-    private static readonly Color AccentColor = Color.FromRgb(194, 66, 51);     // 0.76 / 0.26 / 0.20
-    private static readonly Color TextColor = Color.FromRgb(26, 26, 26);        // 0.10 white
-
-    private static readonly FontFamily Font = new("Consolas, Microsoft YaHei UI");
+    private const double BottomShadow = 2;
 
     private readonly Canvas _canvas = new();
     private DispatcherTimer? _hideTimer;
@@ -88,6 +83,8 @@ public sealed class SpeechBubbleWindow : TransparentTopmostWindow
         Hide();
     }
 
+    public void Stop() => HideBubble();
+
     private static Size FittingSize(string message)
     {
         var text = Measure(message, MaximumTextWidth);
@@ -104,9 +101,9 @@ public sealed class SpeechBubbleWindow : TransparentTopmostWindow
             message,
             System.Globalization.CultureInfo.CurrentCulture,
             System.Windows.FlowDirection.LeftToRight,
-            new Typeface(Font, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
-            15,
-            System.Windows.Media.Brushes.Black,
+            new Typeface(PixelFont.Family, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal),
+            PixelFont.SpeechSize,
+            PixelStyle.Brush(PixelStyle.TextColor),
             1.0)
         {
             MaxTextWidth = maxWidth,
@@ -159,7 +156,7 @@ public sealed class SpeechBubbleWindow : TransparentTopmostWindow
         _canvas.Width = Width;
         _canvas.Height = Height;
 
-        var bodyY = _tailEdge == TailEdge.Bottom ? OuterInset : TailHeight + OuterInset;
+        var bodyY = _tailEdge == TailEdge.Bottom ? TailHeight + OuterInset : OuterInset;
         var bodyRect = new Rect(
             OuterInset,
             bodyY,
@@ -172,12 +169,13 @@ public sealed class SpeechBubbleWindow : TransparentTopmostWindow
         var textBlock = new TextBlock
         {
             Text = _message,
-            FontFamily = Font,
+            FontFamily = PixelFont.Family,
             FontWeight = FontWeights.Bold,
-            FontSize = 15,
-            Foreground = new SolidColorBrush(TextColor),
+            FontSize = PixelFont.SpeechSize,
+            Foreground = PixelStyle.Brush(PixelStyle.TextColor),
             TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
+            LineHeight = double.NaN,
             Width = bodyRect.Width - Border * 2 - (TextHorizontalInset - Border) * 2,
         };
         Canvas.SetLeft(textBlock, bodyRect.X + TextHorizontalInset);
@@ -187,74 +185,99 @@ public sealed class SpeechBubbleWindow : TransparentTopmostWindow
 
     private void DrawPixelBody(Rect rect)
     {
-        const double corner = 6;
-        var outline = new Polygon
+        // 阶梯像素外框 + 纸面内衬（与像素 UI kit 同一套画法）。
+        _canvas.Children.Add(new Path
         {
-            Fill = new SolidColorBrush(OutlineColor),
-            Points =
-            {
-                new Point(rect.Left + corner, rect.Top),
-                new Point(rect.Right - corner, rect.Top),
-                new Point(rect.Right, rect.Top + corner),
-                new Point(rect.Right, rect.Bottom - corner),
-                new Point(rect.Right - corner, rect.Bottom),
-                new Point(rect.Left + corner, rect.Bottom),
-                new Point(rect.Left, rect.Bottom - corner),
-                new Point(rect.Left, rect.Top + corner),
-            },
-        };
-        _canvas.Children.Add(outline);
+            Data = Offset(PixelStyle.SteppedRoundedRect(rect.Width, rect.Height, CornerRadius), rect.X, rect.Y),
+            Fill = PixelStyle.Brush(PixelStyle.BorderColor),
+        });
+        _canvas.Children.Add(new Path
+        {
+            Data = Offset(
+                PixelStyle.SteppedRoundedRect(rect.Width - Border * 2, rect.Height - Border * 2, CornerRadius - Border),
+                rect.X + Border, rect.Y + Border),
+            Fill = PixelStyle.Brush(PixelStyle.FillColor),
+        });
 
         var inner = new Rect(rect.X + Border, rect.Y + Border, rect.Width - Border * 2, rect.Height - Border * 2);
-        var innerRect = new Rectangle
+        _canvas.Children.Add(new Rectangle
         {
-            Fill = new SolidColorBrush(FillColor),
+            Fill = PixelStyle.Brush(PixelStyle.ShadowColor),
             Width = inner.Width,
-            Height = inner.Height,
-        };
-        Canvas.SetLeft(innerRect, inner.X);
-        Canvas.SetTop(innerRect, inner.Y);
-        _canvas.Children.Add(innerRect);
+            Height = BottomShadow,
+        });
+        Canvas.SetLeft(_canvas.Children[^1], inner.X);
+        Canvas.SetTop(_canvas.Children[^1], inner.Bottom - BottomShadow);
 
-        // 红色饰条与 macOS 版一致，位于内框底部 3px。
-        var accent = new Rectangle
+        DrawPaperSpeckles(inner);
+    }
+
+    private void DrawPaperSpeckles(Rect innerRect)
+    {
+        if (innerRect.Width < 60 || innerRect.Height < 36) return;
+        (double X, double Y)[] spots =
+        [
+            (0.16, 0.32),
+            (0.71, 0.24),
+            (0.86, 0.62),
+            (0.31, 0.70),
+        ];
+        foreach (var (fx, fy) in spots)
         {
-            Fill = new SolidColorBrush(AccentColor),
-            Width = inner.Width,
-            Height = 3,
-        };
-        Canvas.SetLeft(accent, inner.X);
-        Canvas.SetTop(accent, inner.Bottom - 3);
-        _canvas.Children.Add(accent);
+            var speckle = new Rectangle
+            {
+                Fill = PixelStyle.Brush(PixelStyle.ShadowColor),
+                Width = 2,
+                Height = 2,
+            };
+            Canvas.SetLeft(speckle, Math.Floor(innerRect.X + innerRect.Width * fx));
+            Canvas.SetTop(speckle, Math.Floor(innerRect.Y + innerRect.Height * fy));
+            _canvas.Children.Add(speckle);
+        }
     }
 
     private void DrawTail(Rect bodyRect)
     {
-        var bodyEdgeY = _tailEdge == TailEdge.Bottom ? bodyRect.Bottom : bodyRect.Top;
-        var tipY = _tailEdge == TailEdge.Bottom ? Height - 1 : 1;
-
-        _canvas.Children.Add(new Polygon
+        var downward = _tailEdge == TailEdge.Bottom;
+        // 楼梯状尾巴：（步高，外宽，内宽，内高）。内衬贴住身体一侧，尖端留出描边帽。
+        (double Height, double Outer, double Inner, double InnerHeight)[] steps =
+        [
+            (5, 26, 20, 5),
+            (5, 18, 12, 5),
+            (4, 10, 4, 1),
+        ];
+        var y = downward ? bodyRect.Bottom : bodyRect.Top;
+        foreach (var step in steps)
         {
-            Fill = new SolidColorBrush(OutlineColor),
-            Points =
+            var outerY = downward ? y : y - step.Height;
+            var innerY = downward ? outerY : outerY + step.Height - step.InnerHeight;
+            _canvas.Children.Add(new Rectangle
             {
-                new Point(_tailX - 13, bodyEdgeY),
-                new Point(_tailX + 10, bodyEdgeY),
-                new Point(_tailX + 3, tipY),
-                new Point(_tailX - 4, tipY),
-            },
-        });
+                Fill = PixelStyle.Brush(PixelStyle.BorderColor),
+                Width = step.Outer,
+                Height = step.Height,
+            });
+            Canvas.SetLeft(_canvas.Children[^1], _tailX - step.Outer / 2);
+            Canvas.SetTop(_canvas.Children[^1], outerY);
 
-        var innerTipY = _tailEdge == TailEdge.Bottom ? tipY - 5 : tipY + 5;
-        _canvas.Children.Add(new Polygon
-        {
-            Fill = new SolidColorBrush(FillColor),
-            Points =
+            _canvas.Children.Add(new Rectangle
             {
-                new Point(_tailX - 7, bodyEdgeY),
-                new Point(_tailX + 4, bodyEdgeY),
-                new Point(_tailX, innerTipY),
-            },
-        });
+                Fill = PixelStyle.Brush(PixelStyle.FillColor),
+                Width = step.Inner,
+                Height = step.InnerHeight,
+            });
+            Canvas.SetLeft(_canvas.Children[^1], _tailX - step.Inner / 2);
+            Canvas.SetTop(_canvas.Children[^1], innerY);
+
+            y += downward ? step.Height : -step.Height;
+        }
+    }
+
+    private static Geometry Offset(Geometry geometry, double x, double y)
+    {
+        var positioned = (StreamGeometry)geometry.Clone();
+        positioned.Transform = new TranslateTransform(x, y);
+        positioned.Freeze();
+        return positioned;
     }
 }

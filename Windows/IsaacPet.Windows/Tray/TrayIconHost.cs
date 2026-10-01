@@ -53,7 +53,7 @@ public sealed class TrayIconHost : IDisposable
         _playModeItem = Add("进入游玩模式", () => { controller.TogglePlayMode(); UpdateStates(); });
         _menu.Items.Add(new ToolStripSeparator());
         Add("随机说一句", controller.SayRandomPhrase, disableInPlayMode: true);
-        Add("表个情", controller.ShowRandomExpression, disableInPlayMode: true);
+        Add("表个情", controller.ShowRandomEmote, disableInPlayMode: true);
         Add("自定义气泡…", () =>
         {
             if (controller.IsPlayMode) return;

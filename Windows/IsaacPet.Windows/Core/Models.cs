@@ -45,6 +45,39 @@ public static class SpeechBubblePolicy
 
     public static TimeSpan DisplayDuration(string message) =>
         TimeSpan.FromSeconds(Math.Clamp(3 + message.Length * 0.055, 3, 8));
+
+    public static TimeSpan EmoteDisplayDuration => TimeSpan.FromSeconds(3.2);
+}
+
+/// <summary>
+/// 桌宠头顶的游戏风表情气泡；每个表情是包内独立 PNG，
+/// 并搭配桌宠同时表演的动画。移植自 macOS 版 EmoteID。
+/// </summary>
+public enum EmoteID
+{
+    Sad,
+    Shocked,
+    Happy,
+}
+
+public static class EmoteIDExtensions
+{
+    public static string ResourceName(this EmoteID emote) => emote switch
+    {
+        EmoteID.Sad => "EmoteSad",
+        EmoteID.Shocked => "EmoteShocked",
+        _ => "EmoteHappy",
+    };
+
+    public static AnimationID CompanionAnimation(this EmoteID emote) => emote switch
+    {
+        EmoteID.Sad => AnimationID.Cry,
+        EmoteID.Shocked => AnimationID.Observe,
+        _ => AnimationID.ThumbsUp,
+    };
+
+    public static EmoteID RandomEmote() =>
+        (EmoteID)Random.Shared.Next(Enum.GetValues<EmoteID>().Length);
 }
 
 public static class PetSpeechLibrary
@@ -59,22 +92,9 @@ public static class PetSpeechLibrary
         "今天想做什么？",
     ];
 
-    private static readonly string[] Expressions =
-    [
-        ":)",
-        "♥",
-        "...",
-        "!",
-        "T_T",
-        "o_o",
-        ":P",
-    ];
-
     private static readonly Random Rng = new();
 
     public static string RandomPhrase() => Phrases[Rng.Next(Phrases.Length)];
-
-    public static string RandomExpression() => Expressions[Rng.Next(Expressions.Length)];
 }
 
 /// <summary>

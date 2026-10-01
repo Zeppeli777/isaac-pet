@@ -29,6 +29,7 @@ public sealed class PetController
     private readonly PetWindow _window;
     private readonly SettingsStore _settingsStore;
     private readonly SpeechBubbleWindow _speechBubble = new();
+    private readonly EmoteBubbleWindow _emoteBubble = new();
     private readonly TodoStore _todoStore;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly DispatcherTimer _timer;
@@ -732,6 +733,7 @@ public sealed class PetController
     public void ShowSpeech(string message)
     {
         if (_isPlayMode) return;
+        _emoteBubble.Hide(); // 表情气泡和说话气泡悬浮在同一位置，说话时先收起表情。
         var screen = CurrentScreen();
         if (screen == null) return;
         _speechBubble.ShowMessage(message, PetFrameDip(), screen.WorkingArea);
@@ -744,6 +746,7 @@ public sealed class PetController
         var screen = CurrentScreen();
         if (screen == null) return;
         _speechBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
+        _emoteBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
     }
 
     // ---------- Todo 提醒 ----------
@@ -785,6 +788,7 @@ public sealed class PetController
         if (_isPlayMode) return;
         _isPlayMode = true;
         _speechBubble.HideBubble();
+        _emoteBubble.Hide();
         _targetX = null;
         _actionEndsAt = null;
         _hoveredSince = null;
@@ -844,10 +848,15 @@ public sealed class PetController
         ShowSpeech(PetSpeechLibrary.RandomPhrase());
     }
 
-    public void ShowRandomExpression()
+    public void ShowRandomEmote()
     {
-        Perform(AnimationID.ThumbsUp);
-        ShowSpeech(PetSpeechLibrary.RandomExpression());
+        if (_isPlayMode) return;
+        var emote = EmoteIDExtensions.RandomEmote();
+        Perform(emote.CompanionAnimation());
+        _emoteBubble.Hide();
+        var screen = CurrentScreen();
+        if (screen == null) return;
+        _emoteBubble.Show(_atlas.EmoteFrame(emote), PetFrameDip(), screen.WorkingArea, _settings.Scale);
     }
 
     public void ShowCustomSpeech(string rawText) => ShowSpeech(rawText);
@@ -939,6 +948,7 @@ public sealed class PetController
     {
         _timer.Stop();
         RemoveAllProjectiles();
+        _emoteBubble.Hide();
         _speechBubble.HideBubble();
         _speechBubble.Close();
         _window.Close();

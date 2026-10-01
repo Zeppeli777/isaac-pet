@@ -50,7 +50,7 @@ OPTIONAL_ATLASES = {
     "Agents/magdalene-walking-vertical-atlas.webp": (CELL_W * 8, CELL_H * 2),
 }
 
-PLAIN_COPIES = ["IsaacTear.png", "IsaacTearDrop.png", "IsaacPet.png", "StatusIsaac.png"]
+PLAIN_COPIES = ["IsaacTear.png", "IsaacTearDrop.png", "EmoteHappy.png", "EmoteSad.png", "EmoteShocked.png", "IsaacPet.png", "StatusIsaac.png"]
 
 
 def convert_webp(source: Path, dest: Path, expected: tuple[int, int]) -> None:

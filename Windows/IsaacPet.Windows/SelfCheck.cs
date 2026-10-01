@@ -120,6 +120,12 @@ public static class SelfCheck
         Check(SpeechBubblePolicy.Normalized(new string('字', 100))!.Length == SpeechBubblePolicy.MaximumCharacters, "气泡文本 80 字截断");
         Check(SpeechBubblePolicy.Normalized("   ") == null, "空气泡返回 null");
 
+        // 9.5 表情气泡：素材名与配套动画一一对应
+        Check(SpeechBubblePolicy.EmoteDisplayDuration == TimeSpan.FromSeconds(3.2), "表情气泡显示 3.2 秒");
+        Check(EmoteID.Sad.ResourceName() == "EmoteSad" && EmoteID.Sad.CompanionAnimation() == AnimationID.Cry, "Sad 表情配套哭泣动画");
+        Check(EmoteID.Shocked.ResourceName() == "EmoteShocked" && EmoteID.Shocked.CompanionAnimation() == AnimationID.Observe, "Shocked 表情配套观察动画");
+        Check(EmoteID.Happy.ResourceName() == "EmoteHappy" && EmoteID.Happy.CompanionAnimation() == AnimationID.ThumbsUp, "Happy 表情配套点赞动画");
+
         // 10. 游玩输入
         var keys = new HashSet<System.Windows.Input.Key> { PlayKeys.MoveLeft, PlayKeys.MoveUp };
         var (mx, my) = PlayInput.MovementVector(keys);
