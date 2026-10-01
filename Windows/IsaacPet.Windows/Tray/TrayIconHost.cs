@@ -176,6 +176,9 @@ public sealed class TrayIconHost : IDisposable
         _nextTodoItem.Enabled = !inPlay && pendingCount > 0;
 
         var llmRunning = _llmRequestRunning();
+        // 问法跟随当前皮肤的人格名（对应 macOS 版 menuWillOpen 的 title 更新）。
+        var personaName = PetAppearanceCatalog.DefinitionFor(_controller.PreferredAppearance).PersonaName;
+        _llmAskItem.Text = $"问 {personaName}（LLM）…";
         _llmAskItem.Enabled = !inPlay && !llmRunning;
         _llmSettingsItem.Enabled = !inPlay && !llmRunning;
         _llmDisconnectItem.Enabled = !inPlay && _llmCredentialConfigured();

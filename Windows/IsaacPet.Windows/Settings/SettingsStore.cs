@@ -15,6 +15,8 @@ public sealed class SettingsStore
         public bool Roaming { get; set; } = true;
         public string? Screen { get; set; }
         public double HorizontalPosition { get; set; } = 0.82;
+        public string? LlmBaseUrl { get; set; }
+        public string? LlmApiFormat { get; set; }
         public string? LlmModel { get; set; }
         public bool LlmCredentialConfigured { get; set; }
         public string ActiveAppearance { get; set; } = "isaac";
@@ -46,6 +48,19 @@ public sealed class SettingsStore
         _persisted.Screen = settings.ScreenIdentifier;
         _persisted.HorizontalPosition = settings.HorizontalPosition;
         Commit();
+    }
+
+    public string LlmBaseUrl
+    {
+        get => string.IsNullOrWhiteSpace(_persisted.LlmBaseUrl) ? "https://api.openai.com/v1" : _persisted.LlmBaseUrl!;
+        set { _persisted.LlmBaseUrl = value; Commit(); }
+    }
+
+    /// <summary>"openai" 或 "anthropic"；未知值按 openai 处理。</summary>
+    public string LlmApiFormat
+    {
+        get => string.IsNullOrWhiteSpace(_persisted.LlmApiFormat) ? "openai" : _persisted.LlmApiFormat!;
+        set { _persisted.LlmApiFormat = value; Commit(); }
     }
 
     public string LlmModel

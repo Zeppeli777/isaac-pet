@@ -126,6 +126,46 @@ public static class SelfCheck
         Check(mx < 0 && my > 0 && Math.Abs(Math.Sqrt(mx * mx + my * my) - 1) < 1e-9, "斜向移动向量归一化");
         Check(PlayInput.WalkingDirectionFor(mx, my) == PlayWalkingDirection.Left, "斜向步态选择：平局沿用横向步态");
 
+        // 11. LLM 连接配置：端点拼接与导入容错
+        var openAiConfig = new Llm.LlmConnectionConfig
+        {
+            BaseUrl = "https://api.openai.com/v1/",
+            ApiKey = "k",
+            Model = "gpt-5-mini",
+            ApiFormat = Llm.LlmApiFormat.OpenAi,
+        };
+        Check(openAiConfig.EndpointUrl()?.ToString() == "https://api.openai.com/v1/chat/completions", "OpenAI 端点拼接并去掉结尾斜杠");
+        var anthropicConfig = openAiConfig with
+        {
+            BaseUrl = "https://api.anthropic.com",
+            ApiFormat = Llm.LlmApiFormat.Anthropic,
+        };
+        Check(anthropicConfig.EndpointUrl()?.ToString() == "https://api.anthropic.com/v1/messages", "Anthropic 端点自动补 /v1");
+        var imported = Llm.LlmConnectionConfig.ParseImported(
+            """{"baseUrl": "https://api.example.com/", "api_key": "sk-test", "model_name": "claude-x"}""");
+        Check(imported.BaseUrl == "https://api.example.com" && imported.Model == "claude-x" && imported.ApiKey == "sk-test",
+            "导入配置容忍别名键名并规范化 Base URL");
+        Check(imported.ApiFormat == Llm.LlmApiFormat.OpenAi, "导入配置按 Base URL 推断 API 格式");
+        Check(Llm.LlmConnectionConfig.ParseImported(
+                """{"baseURL":"https://api.anthropic.com","model":"m"}""").ApiFormat == Llm.LlmApiFormat.Anthropic,
+            "导入配置识别 Anthropic 主机名");
+        try
+        {
+            Llm.LlmConnectionConfig.ParseImported("[1,2]");
+            Check(false, "导入非对象 JSON 报配置文件无效");
+        }
+        catch (Exception error)
+        {
+            Check(error.Message.Contains("JSON"), "导入非对象 JSON 报配置文件无效");
+        }
+
+        // 12. 皮肤人格：每个形象都有包含人设要素的 system prompt
+        foreach (PetAppearanceID appearance in Enum.GetValues<PetAppearanceID>())
+        {
+            var prompt = PetPersona.SystemPrompt(appearance);
+            Check(prompt.Length > 80 && prompt.Contains("小桌宠") && prompt.Contains("80 个字"), $"皮肤人格提示词：{appearance}");
+        }
+
         return Report(failures);
     }
 
