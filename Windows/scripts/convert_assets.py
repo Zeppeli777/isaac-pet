@@ -14,6 +14,8 @@ Reads from the repository root:
     Resources/StatusIsaac.png
     Resources/Agents/magdalene-spritesheet.webp
     Resources/Agents/judas-spritesheet.webp
+    Resources/Agents/magdalene-shooting-atlas.webp
+    Resources/Agents/magdalene-walking-vertical-atlas.webp
 
 Writes into Windows/IsaacPet.Windows/Assets/.
 """
@@ -35,16 +37,32 @@ CELL_H = 208
 WEBP_ATLASES = {
     "spritesheet.webp": (CELL_W * 8, CELL_H * 11),
     "shooting-atlas.webp": (CELL_W * 4, CELL_H),
-    "walking-vertical-atlas.webp": (CELL_W * 4, CELL_H * 2),
+    # 竖向行走循环重建后为 8 列（原 4 列）。
+    "walking-vertical-atlas.webp": (CELL_W * 8, CELL_H * 2),
+    # 举卡抽牌姿势辅助图集。
+    "raising-atlas.webp": (CELL_W * 8, CELL_H),
 }
 
 OPTIONAL_ATLASES = {
     # 多角色图集：存在才转换，缺失时 Windows 端与 macOS 端一样回退为 Isaac。
     "Agents/magdalene-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
     "Agents/judas-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
+    # Magdalene 自带的辅助图集：缺失时回退 Isaac 的基础辅助图集。
+    "Agents/magdalene-shooting-atlas.webp": (CELL_W * 4, CELL_H),
+    "Agents/magdalene-walking-vertical-atlas.webp": (CELL_W * 8, CELL_H * 2),
+    "Agents/magdalene-raising-atlas.webp": (CELL_W * 8, CELL_H),
 }
 
-PLAIN_COPIES = ["IsaacTear.png", "IsaacPet.png", "StatusIsaac.png"]
+# 塔罗卡面 HUD 图标（含卡背），直接复制进 Assets/Cards。
+CARD_ICONS = "Cards"
+CARD_PLAIN_COPIES = ["Cards/CardBack.png"] + [
+    f"Cards/Tarot{index:02d}.png" for index in range(22)
+] + [f"Cards/TarotReversed{index:02d}.png" for index in range(22)]
+
+# 菜单分组根项的像素图标（动作/对话/任务/设置）。
+MENU_ICON_COPIES = [f"MenuIcons/{name}.png" for name in ("Action", "Chat", "Tasks", "Settings")]
+
+PLAIN_COPIES = ["IsaacTear.png", "IsaacTearDrop.png", "EmoteHappy.png", "EmoteSad.png", "EmoteShocked.png", "IsaacPet.png", "StatusIsaac.png"]
 
 
 def convert_webp(source: Path, dest: Path, expected: tuple[int, int]) -> None:
@@ -83,6 +101,26 @@ def main() -> int:
     for name in PLAIN_COPIES:
         source = RESOURCES / name
         shutil.copyfile(source, OUT / name)
+        print(f"ok  {name}（直接复制）")
+
+    for name in CARD_PLAIN_COPIES:
+        source = RESOURCES / name
+        if not source.exists():
+            print(f"skip  {name}（未安装）")
+            continue
+        dest = OUT / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, dest)
+        print(f"ok  {name}（直接复制）")
+
+    for name in MENU_ICON_COPIES:
+        source = RESOURCES / name
+        if not source.exists():
+            print(f"skip  {name}（未安装）")
+            continue
+        dest = OUT / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, dest)
         print(f"ok  {name}（直接复制）")
 
     build_icon(RESOURCES / "IsaacPet.png", OUT / "IsaacPet.ico")

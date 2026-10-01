@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using IsaacPet.Windows.Core;
+using IsaacPet.Windows.Ui.Pixel;
 using CheckBox = System.Windows.Controls.CheckBox;
-using Button = System.Windows.Controls.Button;
 using HorizontalAlignment = System.Windows.HorizontalAlignment;
 using Orientation = System.Windows.Controls.Orientation;
 using TextBox = System.Windows.Controls.TextBox;
@@ -11,10 +11,10 @@ using TextBox = System.Windows.Controls.TextBox;
 namespace IsaacPet.Windows.Ui;
 
 /// <summary>
-/// 本地 Todo 窗口：新增（可带提醒时间）、完成/恢复、删除。
+/// 本地 Todo 窗口（像素风外壳）：新增（可带提醒时间）、完成/恢复、删除。
 /// 数据只保存在 %APPDATA%\Isaac Pet\todos-v1.json。
 /// </summary>
-public sealed class TodoWindow : Window
+public sealed class TodoWindow : PixelWindow
 {
     private readonly TodoStore _store;
     private readonly Action _onChanged;
@@ -25,29 +25,31 @@ public sealed class TodoWindow : Window
     private readonly CheckBox _dueEnabled;
 
     public TodoWindow(TodoStore store, Action onChanged)
+        : base("Isaac Pet · Todo", resizable: true)
     {
         _store = store;
         _onChanged = onChanged;
 
-        Title = "Isaac Pet · Todo";
         Width = 460;
         Height = 520;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Topmost = true;
 
-        var root = new DockPanel { Margin = new Thickness(12) };
+        var root = new DockPanel();
 
         // 顶部新建区
         var composer = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
         DockPanel.SetDock(composer, Dock.Top);
-        _titleBox = new TextBox { Margin = new Thickness(0, 0, 0, 6) };
-        _titleBox.SetValue(ToolTipService.ToolTipProperty, "要做什么？（最多 120 字）");
+        _titleBox = PixelStyle.CreateField("要做什么？（最多 120 字）");
+        _titleBox.Margin = new Thickness(0, 0, 0, 6);
         composer.Children.Add(_titleBox);
 
         var dueRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
         _dueEnabled = new CheckBox { Content = "提醒时间", VerticalAlignment = VerticalAlignment.Center };
         _dueDatePicker = new DatePicker { Margin = new Thickness(8, 0, 0, 0), Width = 130, IsEnabled = false };
-        _dueTimeBox = new TextBox { Text = "18:00", Width = 60, Margin = new Thickness(8, 0, 0, 0), IsEnabled = false };
+        _dueTimeBox = PixelStyle.CreateField("HH:mm");
+        _dueTimeBox.Text = "18:00";
+        _dueTimeBox.Width = 60;
+        _dueTimeBox.Margin = new Thickness(8, 0, 0, 0);
+        _dueTimeBox.IsEnabled = false;
         _dueEnabled.Checked += (_, _) => { _dueDatePicker.IsEnabled = true; _dueTimeBox.IsEnabled = true; };
         _dueEnabled.Unchecked += (_, _) => { _dueDatePicker.IsEnabled = false; _dueTimeBox.IsEnabled = false; };
         dueRow.Children.Add(_dueEnabled);
@@ -56,7 +58,7 @@ public sealed class TodoWindow : Window
         dueRow.Children.Add(new TextBlock { Text = "（HH:mm）", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), Opacity = 0.6 });
         composer.Children.Add(dueRow);
 
-        var addButton = new Button { Content = "添加 Todo", HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(12, 4, 12, 4) };
+        var addButton = new PixelButton { Content = "添加 Todo", HorizontalAlignment = HorizontalAlignment.Left };
         addButton.Click += (_, _) => AddFromComposer();
         composer.Children.Add(addButton);
         root.Children.Add(composer);
@@ -67,7 +69,7 @@ public sealed class TodoWindow : Window
         scroll.Content = _listPanel;
         root.Children.Add(scroll);
 
-        Content = root;
+        SetContent(root);
         Reload();
     }
 
@@ -96,7 +98,7 @@ public sealed class TodoWindow : Window
     {
         var row = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
 
-        var deleteButton = new Button { Content = "删除", Padding = new Thickness(8, 1, 8, 1) };
+        var deleteButton = new PixelButton { Content = "删除" };
         DockPanel.SetDock(deleteButton, Dock.Right);
         var captured = item.Id;
         deleteButton.Click += (_, _) =>
@@ -157,7 +159,7 @@ public sealed class TodoWindow : Window
             var date = _dueDatePicker.SelectedDate ?? DateTime.Today;
             if (!TimeSpan.TryParse(_dueTimeBox.Text.Trim(), CultureInfo.InvariantCulture, out var time))
             {
-                System.Windows.MessageBox.Show(this, "提醒时间格式应为 HH:mm，例如 18:00。", "Isaac Pet", MessageBoxButton.OK, MessageBoxImage.Information);
+                PixelDialog.ShowMessage("Isaac Pet", "提醒时间格式应为 HH:mm，例如 18:00。");
                 return;
             }
             dueAt = new DateTimeOffset(date.Date + time, DateTimeOffset.Now.Offset);
@@ -168,7 +170,7 @@ public sealed class TodoWindow : Window
         }
         catch (InvalidOperationException error)
         {
-            System.Windows.MessageBox.Show(this, error.Message, "Isaac Pet", MessageBoxButton.OK, MessageBoxImage.Information);
+            PixelDialog.ShowMessage("Isaac Pet", error.Message);
             return;
         }
         _titleBox.Clear();

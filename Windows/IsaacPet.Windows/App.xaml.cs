@@ -84,6 +84,10 @@ public partial class App : System.Windows.Application
             showTodoWindow: () => ShowTodoWindow(focusComposer: false),
             addTodo: () => ShowTodoWindow(focusComposer: true),
             showNextTodo: ShowNextTodo,
+            startFocusTimer: _pet.StartFocusTimer,
+            cancelFocusTimer: _pet.CancelFocusTimer,
+            focusRunning: () => _pet.FocusRunning,
+            focusRemainingText: _pet.FocusRemainingText,
             configureLlm: llm.Configure,
             askLlm: llm.Ask,
             disconnectLlm: llm.Disconnect,
@@ -99,6 +103,16 @@ public partial class App : System.Windows.Application
             {
                 timer.Stop();
                 ShowTodoWindow(focusComposer: false);
+            };
+            timer.Start();
+        }
+        else if (e.Args.Contains("--show-tarot") && _pet != null)
+        {
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                _pet.DrawTarotCard();
             };
             timer.Start();
         }

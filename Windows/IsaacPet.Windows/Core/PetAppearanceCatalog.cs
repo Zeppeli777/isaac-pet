@@ -13,16 +13,23 @@ public enum PetAppearanceID
 public sealed record PetAppearanceDefinition(
     PetAppearanceID Id,
     string DisplayName,
+    string PersonaName,
     string SpriteSheetName,
-    string? Subdirectory);
+    string? Subdirectory,
+    string? ShootingAtlasName = null,
+    string? VerticalWalkingName = null,
+    string? RaisingAtlasName = null);
 
 public static class PetAppearanceCatalog
 {
     public static readonly IReadOnlyList<PetAppearanceDefinition> Definitions =
     [
-        new(PetAppearanceID.Isaac, "Isaac（默认）", "spritesheet", null),
-        new(PetAppearanceID.Magdalene, "Magdalene", "magdalene-spritesheet", "Agents"),
-        new(PetAppearanceID.Judas, "Judas", "judas-spritesheet", "Agents"),
+        new(PetAppearanceID.Isaac, "Isaac（默认）", "Isaac", "spritesheet", null),
+        new(PetAppearanceID.Magdalene, "Magdalene", "Magdalene", "magdalene-spritesheet", "Agents",
+            ShootingAtlasName: "magdalene-shooting-atlas",
+            VerticalWalkingName: "magdalene-walking-vertical-atlas",
+            RaisingAtlasName: "magdalene-raising-atlas"),
+        new(PetAppearanceID.Judas, "Judas", "Judas", "judas-spritesheet", "Agents"),
     ];
 
     public static PetAppearanceDefinition DefinitionFor(PetAppearanceID id) =>

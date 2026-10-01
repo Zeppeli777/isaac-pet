@@ -7,6 +7,7 @@ using IsaacPet.Windows.Platform;
 using IsaacPet.Windows.Settings;
 using IsaacPet.Windows.Sprites;
 using IsaacPet.Windows.Ui;
+using IsaacPet.Windows.Ui.Pixel;
 using Point = System.Windows.Point;
 using Size = System.Windows.Size;
 
@@ -23,16 +24,22 @@ public sealed class PetController
     private const double WalkSpeed = 80;      // DIP / 秒
     private const double PlaySpeed = 180;     // DIP / 秒
     private const double TearSpeed = 330;
-    private const double TearLifetime = 1.45;
     private const int MaxProjectiles = 16;
+    private const int MaxDrops = 48;
 
     private readonly PetWindow _window;
     private readonly SettingsStore _settingsStore;
     private readonly SpeechBubbleWindow _speechBubble = new();
+    private readonly EmoteBubbleWindow _emoteBubble = new();
+    private readonly CardRevealWindow _cardReveal = new();
+    private readonly CardBubbleWindow _cardBubble = new();
+    private CancellationTokenSource? _cardDrawCts;
+    private int _cardDrawSession;
     private readonly TodoStore _todoStore;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly DispatcherTimer _timer;
     private readonly SpriteFrame _tearFrame;
+    private readonly SpriteFrame _tearDropFrame;
 
     private SpriteAtlas _atlas;
     private PetSettings _settings;
@@ -56,10 +63,9 @@ public sealed class PetController
     private double _nextShotAt;
     private Direction8? _shootingPoseDirection;
     private double _shootingPoseEndsAt;
-    private readonly List<Projectile> _projectiles = [];
+    private readonly List<TearProjectile> _projectiles = [];
+    private readonly List<TearDrop> _drops = [];
     private double _nextTodoCheckAt;
-
-    private sealed record Projectile(TearWindow Window, double VelocityX, double VelocityY, double ExpiresAt);
 
     public PetSettings CurrentSettings => _settings;
     public bool IsPlayMode => _isPlayMode;
@@ -68,6 +74,9 @@ public sealed class PetController
     public PetAppearanceID PreferredAppearance => _preferredAppearance;
 
     public event Action? TodosChanged;
+
+    /// <summary>专注时段结束时触发；宿主用它发托盘气泡（macOS 版走系统通知）。</summary>
+    public event Action<string>? FocusCompleted;
 
     public PetController(SettingsStore settingsStore)
     {
@@ -84,6 +93,7 @@ public sealed class PetController
             settingsStore.ActiveAppearance = PetAppearanceCatalog.RawValue(PetAppearanceID.Isaac);
         }
         _tearFrame = _atlas.TearFrame();
+        _tearDropFrame = _atlas.TearDropFrame();
 
         var size = ScaledSize();
         _window = new PetWindow(size.Width, size.Height);
@@ -100,6 +110,7 @@ public sealed class PetController
         ShowIdleFrame();
         _window.Show();
         ShowSpeech("嗨！ :)");
+        RestoreFocusSession();
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.0 / 30) };
         _timer.Tick += (_, _) => Tick();
@@ -111,7 +122,12 @@ public sealed class PetController
         var definition = PetAppearanceCatalog.DefinitionFor(appearance);
         try
         {
-            return SpriteAtlas.Load(definition.SpriteSheetName, definition.Subdirectory);
+            return SpriteAtlas.Load(
+                definition.SpriteSheetName,
+                definition.Subdirectory,
+                definition.ShootingAtlasName,
+                definition.VerticalWalkingName,
+                definition.RaisingAtlasName);
         }
         catch (Exception)
         {
@@ -238,46 +254,83 @@ public sealed class PetController
         _currentFrameKey = "";
         if (_projectiles.Count >= MaxProjectiles)
         {
-            var oldest = _projectiles[0];
+            _projectiles[0].Remove();
             _projectiles.RemoveAt(0);
-            oldest.Window.Close();
         }
         var (ux, uy) = PlayInput.UnitVector(direction);
         var centerX = _window.Left + _window.Width / 2 + ux * 26 * _settings.Scale;
         var centerY = _window.Top + _window.Height / 2 - uy * 26 * _settings.Scale;
-        var size = 18 * _settings.Scale;
-        var tear = new TearWindow(_tearFrame, size)
-        {
-            Left = centerX - size / 2,
-            Top = centerY - size / 2,
-        };
-        tear.Show();
-        // 泪弹 y 速度在屏幕上取反（y 向下）。
-        _projectiles.Add(new Projectile(tear, ux * TearSpeed, -uy * TearSpeed, now + TearLifetime));
+        var size = _tearFrame.PixelWidth * _settings.Scale;
+        _projectiles.Add(new TearProjectile(
+            _tearFrame,
+            centerX,
+            centerY,
+            ux * TearSpeed * _settings.Scale,
+            -uy * TearSpeed * _settings.Scale, // 泪弹 y 速度在屏幕上取反（y 向下）
+            size,
+            _settings.Scale,
+            behindPet: direction == Direction8.Up,
+            petHwnd: _window.Hwnd));
     }
 
     private void UpdateProjectiles(double delta, double now)
     {
+        foreach (var projectile in _projectiles) projectile.Update(delta);
+        var bursts = new List<(double X, double Y)>();
         for (var i = _projectiles.Count - 1; i >= 0; i--)
         {
             var projectile = _projectiles[i];
-            projectile.Window.Left += projectile.VelocityX * delta;
-            projectile.Window.Top += projectile.VelocityY * delta;
-            var onAnyScreen = AllScreens().Any(s => s.WorkingArea.Contains(
-                projectile.Window.Left + projectile.Window.Width / 2,
-                projectile.Window.Top + projectile.Window.Height / 2));
-            if (now >= projectile.ExpiresAt || !onAnyScreen)
+            var centerX = projectile.Window.Left + projectile.Window.Width / 2;
+            var centerY = projectile.Window.Top + projectile.Window.Height / 2;
+            var onAnyScreen = AllScreens().Any(s => s.WorkingArea.Contains(centerX, centerY));
+            if (projectile.Landed) bursts.Add((centerX, centerY));
+            if (projectile.Landed || !onAnyScreen)
             {
-                projectile.Window.Close();
+                projectile.Remove();
                 _projectiles.RemoveAt(i);
+            }
+        }
+        foreach (var (x, y) in bursts) SpawnTearBurst(x, y);
+        UpdateDrops(delta);
+    }
+
+    /// <summary>飞完射程的泪弹爆成几颗小水滴，而不是直接消失。</summary>
+    private void SpawnTearBurst(double centerX, double centerY)
+    {
+        if (_drops.Count >= MaxDrops) return;
+        for (var index = 0; index < 4; index++)
+        {
+            var angle = Math.PI * 2 * index / 4 + Random.Shared.NextDouble() * 0.7;
+            var speed = (70 + Random.Shared.NextDouble() * 60) * _settings.Scale;
+            _drops.Add(new TearDrop(
+                _tearDropFrame,
+                centerX,
+                centerY,
+                Math.Cos(angle) * speed,
+                -Math.Abs(Math.Sin(angle)) * speed, // 屏幕 y 向下：爆开的水滴先向上
+                _tearDropFrame.PixelWidth * _settings.Scale,
+                _settings.Scale));
+        }
+    }
+
+    private void UpdateDrops(double delta)
+    {
+        for (var i = _drops.Count - 1; i >= 0; i--)
+        {
+            if (_drops[i].Update(delta))
+            {
+                _drops[i].Remove();
+                _drops.RemoveAt(i);
             }
         }
     }
 
     private void RemoveAllProjectiles()
     {
-        foreach (var projectile in _projectiles) projectile.Window.Close();
+        foreach (var projectile in _projectiles) projectile.Remove();
         _projectiles.Clear();
+        foreach (var drop in _drops) drop.Remove();
+        _drops.Clear();
     }
 
     private void UpdateAttention(double now)
@@ -426,7 +479,10 @@ public sealed class PetController
         var frameIndex = spec.FrameIndex(now - _stateStartedAt);
         var key = $"{animation}-{frameIndex}";
         if (_currentFrameKey == key) return;
-        SetFrame(_atlas.Frame(animation, frameIndex));
+        // 举卡抽牌从派生的举臂辅助图集渲染，不使用规格里记录的行。
+        SetFrame(animation == AnimationID.DrawCard
+            ? _atlas.RaisingFrame(frameIndex)
+            : _atlas.Frame(animation, frameIndex));
         _currentFrameKey = key;
     }
 
@@ -690,6 +746,7 @@ public sealed class PetController
     public void ShowSpeech(string message)
     {
         if (_isPlayMode) return;
+        _emoteBubble.Hide(); // 表情气泡和说话气泡悬浮在同一位置，说话时先收起表情。
         var screen = CurrentScreen();
         if (screen == null) return;
         _speechBubble.ShowMessage(message, PetFrameDip(), screen.WorkingArea);
@@ -702,6 +759,172 @@ public sealed class PetController
         var screen = CurrentScreen();
         if (screen == null) return;
         _speechBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
+        _emoteBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
+        _cardReveal.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
+        _cardBubble.UpdateAnchor(PetFrameDip(), screen.WorkingArea);
+    }
+
+    // ---------- 专注计时 ----------
+
+    private CancellationTokenSource? _focusCts;
+    private DateTimeOffset? _focusDeadline;
+
+    public bool FocusRunning => _focusCts != null;
+
+    public void StartFocusTimer()
+    {
+        if (_isPlayMode || FocusRunning) return;
+        _targetX = null;
+        PresentFocusComposer();
+    }
+
+    public void CancelFocusTimer() => _focusCts?.Cancel();
+
+    public string FocusRemainingText()
+    {
+        if (_focusDeadline is not { } deadline) return FocusSessionPolicy.ClockText(0);
+        return FocusSessionPolicy.ClockText(FocusSessionPolicy.RemainingSeconds(deadline, DateTimeOffset.Now));
+    }
+
+    private void PresentFocusComposer()
+    {
+        var targetBox = PixelStyle.CreateField("要专注做什么？（可留空，最多 80 字）");
+        var durationBox = new System.Windows.Controls.ComboBox
+        {
+            ItemsSource = new[] { "15 分钟", "25 分钟", "45 分钟" },
+            SelectedIndex = 1,
+            Width = 160,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
+        };
+        var testSeconds = Environment.GetEnvironmentVariable("ISAAC_FOCUS_DURATION_SECONDS");
+        if (testSeconds != null)
+        {
+            durationBox.Items.Add($"测试时长（{FocusSessionPolicy.DurationText(FocusSessionPolicy.DurationFromSeconds(testSeconds))}）");
+            durationBox.SelectedIndex = durationBox.Items.Count - 1;
+        }
+
+        var window = new PixelWindow("专注计时", resizable: false)
+        {
+            Width = 480,
+            SizeToContent = SizeToContent.Height,
+            ResizeMode = ResizeMode.NoResize,
+        };
+        var root = new System.Windows.Controls.StackPanel();
+        root.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = "计时完全在本机运行。结束后会弹窗提醒；也可以随时在菜单里取消。",
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 10),
+        });
+        root.Children.Add(new System.Windows.Controls.TextBlock { Text = "专注目标" });
+        root.Children.Add(targetBox);
+        root.Children.Add(new System.Windows.Controls.TextBlock { Text = "时长", Margin = new Thickness(0, 8, 0, 0) });
+        root.Children.Add(durationBox);
+        var started = false;
+        var buttons = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Margin = new Thickness(0, 12, 0, 0),
+        };
+        var startButton = new PixelButton { Content = "开始专注", IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        var cancelButton = new PixelButton { Content = "取消", IsCancel = true };
+        startButton.Click += (_, _) => { started = true; window.Close(); };
+        buttons.Children.Add(startButton);
+        buttons.Children.Add(cancelButton);
+        root.Children.Add(buttons);
+        window.SetContent(root);
+        window.ShowDialog();
+
+        if (!started) return;
+        TimeSpan duration;
+        if (durationBox.SelectedIndex is >= 0 and <= 2)
+        {
+            duration = TimeSpan.FromMinutes(new[] { 15, 25, 45 }[durationBox.SelectedIndex]);
+        }
+        else
+        {
+            duration = testSeconds != null
+                ? FocusSessionPolicy.DurationFromSeconds(testSeconds)
+                : FocusSessionPolicy.DefaultDuration;
+        }
+        StartFocusSession(NormalizedFocusTarget(targetBox.Text), duration);
+    }
+
+    private static string? NormalizedFocusTarget(string? rawValue)
+    {
+        var value = rawValue?.Trim();
+        if (string.IsNullOrEmpty(value)) return null;
+        return value[..Math.Min(value.Length, 80)];
+    }
+
+    private void StartFocusSession(string? target, TimeSpan duration)
+    {
+        if (_isPlayMode || FocusRunning) return;
+        var safeDuration = duration > FocusSessionPolicy.MaximumDuration ? FocusSessionPolicy.MaximumDuration : duration;
+        if (safeDuration < TimeSpan.FromSeconds(1)) safeDuration = TimeSpan.FromSeconds(1);
+        var deadline = DateTimeOffset.Now + safeDuration;
+        _focusDeadline = deadline;
+        _settingsStore.FocusDeadline = deadline;
+        _settingsStore.FocusTarget = target;
+        Perform(AnimationID.Observe);
+        ShowSpeech($"专注开始！{FocusSessionPolicy.DurationText(safeDuration)}后见。");
+        BeginFocusCountdown(deadline, target);
+    }
+
+    private async void BeginFocusCountdown(DateTimeOffset deadline, string? target)
+    {
+        _focusCts = new CancellationTokenSource();
+        var token = _focusCts.Token;
+        try
+        {
+            var remaining = deadline - DateTimeOffset.Now;
+            if (remaining > TimeSpan.Zero) await Task.Delay(remaining, token);
+            ClearFocusSession();
+            PresentFocusCompletion(target);
+            ThumbsUp();
+            ShowSpeech("专注完成！起来休息一下吧。");
+        }
+        catch (OperationCanceledException)
+        {
+            ClearFocusSession();
+            ShowSpeech("专注计时已取消。");
+        }
+        catch (Exception error)
+        {
+            ClearFocusSession();
+            ShowSpeech($"专注计时失败：{error.Message}");
+        }
+    }
+
+    private void ClearFocusSession()
+    {
+        _focusCts = null;
+        _focusDeadline = null;
+        _settingsStore.FocusDeadline = null;
+        _settingsStore.FocusTarget = null;
+    }
+
+    private void RestoreFocusSession()
+    {
+        if (_settingsStore.FocusDeadline is not { } deadline) return;
+        if (deadline <= DateTimeOffset.Now)
+        {
+            ClearFocusSession();
+            ShowSpeech("刚才的专注时段已经结束啦。");
+            return;
+        }
+        ShowSpeech("已恢复专注计时。");
+        BeginFocusCountdown(deadline, _settingsStore.FocusTarget);
+    }
+
+    private void PresentFocusCompletion(string? target)
+    {
+        var subject = target == null ? "" : $"\n\n目标：{target}";
+        FocusCompleted?.Invoke("专注结束：起来休息一下吧。");
+        PixelDialog.ShowMessage(
+            "专注完成",
+            $"起来休息一下，再决定下一步。{subject}\n托盘气泡会同时提醒，桌面气泡始终有效。");
     }
 
     // ---------- Todo 提醒 ----------
@@ -743,6 +966,8 @@ public sealed class PetController
         if (_isPlayMode) return;
         _isPlayMode = true;
         _speechBubble.HideBubble();
+        _emoteBubble.Hide();
+        CancelCardDraw();
         _targetX = null;
         _actionEndsAt = null;
         _hoveredSince = null;
@@ -802,13 +1027,94 @@ public sealed class PetController
         ShowSpeech(PetSpeechLibrary.RandomPhrase());
     }
 
-    public void ShowRandomExpression()
+    public void ShowRandomEmote()
     {
-        Perform(AnimationID.ThumbsUp);
-        ShowSpeech(PetSpeechLibrary.RandomExpression());
+        if (_isPlayMode) return;
+        var emote = EmoteIDExtensions.RandomEmote();
+        Perform(emote.CompanionAnimation());
+        _emoteBubble.Hide();
+        var screen = CurrentScreen();
+        if (screen == null) return;
+        _emoteBubble.Show(_atlas.EmoteFrame(emote), PetFrameDip(), screen.WorkingArea, _settings.Scale);
     }
 
     public void ShowCustomSpeech(string rawText) => ShowSpeech(rawText);
+
+    /// <summary>抽一张塔罗牌：举牌动画 → 洗牌/放大揭示 → 结果面板。</summary>
+    public void DrawTarotCard()
+    {
+        if (_isPlayMode) return;
+        var card = TarotDrawPolicy.Draw();
+        Perform(AnimationID.DrawCard);
+        // 双手举起的姿势保持到洗牌与揭示全部结束。
+        _actionEndsAt = Now()
+            + TarotDrawPolicy.RaiseTransitionDuration.TotalSeconds
+            + TarotDrawPolicy.RevealDuration.TotalSeconds
+            + 0.2;
+        _cardDrawCts?.Cancel();
+        _cardDrawCts = new CancellationTokenSource();
+        _cardDrawSession++;
+        var session = _cardDrawSession;
+        var token = _cardDrawCts.Token;
+        _ = RunCardDrawAsync(card, session, token);
+    }
+
+    private async Task RunCardDrawAsync(TarotCard card, int session, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(TarotDrawPolicy.RaiseTransitionDuration, token);
+            if (session != _cardDrawSession || token.IsCancellationRequested) return;
+            var screen = CurrentScreen();
+            if (screen == null) return;
+            SpriteFrame icon;
+            SpriteFrame back;
+            try
+            {
+                icon = _atlas.CardFrame(card);
+                back = _atlas.CardBackFrame();
+            }
+            catch
+            {
+                // 卡面素材缺失时跳过动画，直接展示文字面板。
+                ShowCardPanel(card);
+                return;
+            }
+            _speechBubble.HideBubble();
+            _emoteBubble.Hide();
+            _cardBubble.Hide();
+            _cardReveal.Prepare(icon, back, PetFrameDip(), screen.WorkingArea, _settings.Scale);
+            while (_cardReveal.IsShowing && !token.IsCancellationRequested)
+            {
+                await Task.Delay(16, token);
+            }
+            if (token.IsCancellationRequested || session != _cardDrawSession) return;
+            ShowCardPanel(card);
+        }
+        catch (OperationCanceledException)
+        {
+            // 重新抽卡或退出游玩模式时会取消上一次流程。
+        }
+        catch (Exception)
+        {
+            // 揭示流程失败不影响桌宠本体。
+        }
+    }
+
+    private void ShowCardPanel(TarotCard card)
+    {
+        var screen = CurrentScreen();
+        if (screen == null) return;
+        _cardBubble.Show(card, _atlas.CardFrame(card), PetFrameDip(), screen.WorkingArea, _settings.Scale);
+    }
+
+    private void CancelCardDraw()
+    {
+        _cardDrawCts?.Cancel();
+        _cardDrawCts = null;
+        _cardReveal.Hide();
+        _cardBubble.Hide();
+    }
 
     public void ChangeScale(double scale)
     {
@@ -868,7 +1174,12 @@ public sealed class PetController
         var definition = PetAppearanceCatalog.DefinitionFor(appearance);
         try
         {
-            _atlas = SpriteAtlas.Load(definition.SpriteSheetName, definition.Subdirectory);
+            _atlas = SpriteAtlas.Load(
+                definition.SpriteSheetName,
+                definition.Subdirectory,
+                definition.ShootingAtlasName,
+                definition.VerticalWalkingName,
+                definition.RaisingAtlasName);
         }
         catch (Exception error)
         {
@@ -893,6 +1204,8 @@ public sealed class PetController
     {
         _timer.Stop();
         RemoveAllProjectiles();
+        CancelCardDraw();
+        _emoteBubble.Hide();
         _speechBubble.HideBubble();
         _speechBubble.Close();
         _window.Close();

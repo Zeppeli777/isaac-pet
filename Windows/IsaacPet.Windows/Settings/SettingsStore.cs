@@ -15,9 +15,13 @@ public sealed class SettingsStore
         public bool Roaming { get; set; } = true;
         public string? Screen { get; set; }
         public double HorizontalPosition { get; set; } = 0.82;
+        public string? LlmBaseUrl { get; set; }
+        public string? LlmApiFormat { get; set; }
         public string? LlmModel { get; set; }
         public bool LlmCredentialConfigured { get; set; }
         public string ActiveAppearance { get; set; } = "isaac";
+        public DateTimeOffset? FocusDeadline { get; set; }
+        public string? FocusTarget { get; set; }
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
@@ -48,6 +52,19 @@ public sealed class SettingsStore
         Commit();
     }
 
+    public string LlmBaseUrl
+    {
+        get => string.IsNullOrWhiteSpace(_persisted.LlmBaseUrl) ? "https://api.openai.com/v1" : _persisted.LlmBaseUrl!;
+        set { _persisted.LlmBaseUrl = value; Commit(); }
+    }
+
+    /// <summary>"openai" 或 "anthropic"；未知值按 openai 处理。</summary>
+    public string LlmApiFormat
+    {
+        get => string.IsNullOrWhiteSpace(_persisted.LlmApiFormat) ? "openai" : _persisted.LlmApiFormat!;
+        set { _persisted.LlmApiFormat = value; Commit(); }
+    }
+
     public string LlmModel
     {
         get => string.IsNullOrWhiteSpace(_persisted.LlmModel) ? "gpt-5.6-luna" : _persisted.LlmModel!;
@@ -65,6 +82,19 @@ public sealed class SettingsStore
     {
         get => _persisted.ActiveAppearance;
         set { _persisted.ActiveAppearance = value; Commit(); }
+    }
+
+    /// <summary>持久化运行中的专注倒计时，重启后可恢复。</summary>
+    public DateTimeOffset? FocusDeadline
+    {
+        get => _persisted.FocusDeadline;
+        set { _persisted.FocusDeadline = value; Commit(); }
+    }
+
+    public string? FocusTarget
+    {
+        get => _persisted.FocusTarget;
+        set { _persisted.FocusTarget = value; Commit(); }
     }
 
     private Persisted LoadPersisted()

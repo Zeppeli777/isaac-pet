@@ -180,10 +180,34 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         menu.addItem(item("随机说一句", action: #selector(sayRandomPhrase), tag: 115))
         menu.addItem(item("表个情", action: #selector(showRandomExpression), tag: 116))
         menu.addItem(item("自定义气泡…", action: #selector(composeSpeech), tag: 117))
-        menu.addItem(item("问 Isaac（LLM）…", action: #selector(askLLM), tag: 118))
-        menu.addItem(item("LLM 设置…", action: #selector(configureLLM), tag: 119))
-        menu.addItem(item("断开 LLM", action: #selector(disconnectLLM), tag: 120))
-        menu.addItem(item("取消 LLM 请求", action: #selector(cancelLLMRequest), tag: 121))
+        menu.addItem(.separator())
+
+        let actionMenu = NSMenu(title: "动作")
+        actionMenu.addItem(item("招手", action: #selector(wave), tag: 110))
+        actionMenu.addItem(item("跳一下", action: #selector(jump), tag: 111))
+        actionMenu.addItem(item("哭一下", action: #selector(cry), tag: 112))
+        actionMenu.addItem(item("赞一个", action: #selector(thumbsUp), tag: 113))
+        actionMenu.addItem(item("观察一下", action: #selector(observe), tag: 114))
+        actionMenu.addItem(.separator())
+        actionMenu.addItem(item("抽张塔罗牌", action: #selector(drawTarotCard), tag: 130))
+        let actionRoot = NSMenuItem(title: "动作", action: nil, keyEquivalent: "")
+        actionRoot.tag = 310
+        actionRoot.image = menuIcon("Action")
+        menu.setSubmenu(actionMenu, for: actionRoot)
+        menu.addItem(actionRoot)
+        menu.addItem(.separator())
+
+        let chatMenu = NSMenu(title: "对话")
+        chatMenu.addItem(item("问 Isaac（LLM）…", action: #selector(askLLM), tag: 118))
+        chatMenu.addItem(.separator())
+        chatMenu.addItem(item("LLM 设置…", action: #selector(configureLLM), tag: 119))
+        chatMenu.addItem(item("断开 LLM", action: #selector(disconnectLLM), tag: 120))
+        chatMenu.addItem(item("取消 LLM 请求", action: #selector(cancelLLMRequest), tag: 121))
+        let chatRoot = NSMenuItem(title: "对话", action: nil, keyEquivalent: "")
+        chatRoot.tag = 320
+        chatRoot.image = menuIcon("Chat")
+        menu.setSubmenu(chatMenu, for: chatRoot)
+        menu.addItem(chatRoot)
         menu.addItem(.separator())
 
         let todoMenu = NSMenu(title: "Todo")
@@ -200,8 +224,6 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         let todoRoot = NSMenuItem(title: "Todo", action: nil, keyEquivalent: "")
         todoRoot.tag = 400
         menu.setSubmenu(todoMenu, for: todoRoot)
-        menu.addItem(todoRoot)
-        menu.addItem(.separator())
 
         let focusMenu = NSMenu(title: "专注计时")
         focusMenu.addItem(item("开始专注计时…", action: #selector(startFocusTimer), tag: 520))
@@ -209,7 +231,15 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         let focusRoot = NSMenuItem(title: "专注计时", action: nil, keyEquivalent: "")
         focusRoot.tag = 510
         menu.setSubmenu(focusMenu, for: focusRoot)
-        menu.addItem(focusRoot)
+
+        let taskMenu = NSMenu(title: "任务")
+        taskMenu.addItem(todoRoot)
+        taskMenu.addItem(focusRoot)
+        let taskRoot = NSMenuItem(title: "任务", action: nil, keyEquivalent: "")
+        taskRoot.tag = 330
+        taskRoot.image = menuIcon("Tasks")
+        menu.setSubmenu(taskMenu, for: taskRoot)
+        menu.addItem(taskRoot)
         menu.addItem(.separator())
 
         let appearanceMenu = NSMenu(title: "桌宠形象")
@@ -222,20 +252,11 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         let appearanceRoot = NSMenuItem(title: "桌宠形象", action: nil, keyEquivalent: "")
         appearanceRoot.tag = 610
         menu.setSubmenu(appearanceMenu, for: appearanceRoot)
-        menu.addItem(appearanceRoot)
-        menu.addItem(.separator())
-
-        menu.addItem(item("暂停走动", action: #selector(toggleRoaming), tag: 100))
-        menu.addItem(.separator())
-        menu.addItem(item("招手", action: #selector(wave), tag: 110))
-        menu.addItem(item("跳一下", action: #selector(jump), tag: 111))
-        menu.addItem(item("哭一下", action: #selector(cry), tag: 112))
-        menu.addItem(item("赞一个", action: #selector(thumbsUp), tag: 113))
-        menu.addItem(item("观察一下", action: #selector(observe), tag: 114))
-        menu.addItem(item("抽张塔罗牌", action: #selector(drawTarotCard), tag: 130))
-        menu.addItem(.separator())
 
         let sizeMenu = NSMenu(title: "大小")
+        // Size tags double as the scale in percent (see menuWillOpen), so they stay
+        // 75/100/125; keep every other tag clear of that range. The 100% item
+        // shares the number with the old roaming tag, which is why roaming uses 190.
         for (title, scale, tag) in [("75%", 0.75, 75), ("100%", 1.0, 100), ("125%", 1.25, 125)] {
             let sizeItem = item(title, action: #selector(changeScale(_:)), tag: tag)
             sizeItem.representedObject = scale
@@ -243,9 +264,19 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         }
         let sizeRoot = NSMenuItem(title: "大小", action: nil, keyEquivalent: "")
         menu.setSubmenu(sizeMenu, for: sizeRoot)
-        menu.addItem(sizeRoot)
-        menu.addItem(item("登录时启动", action: #selector(toggleLaunchAtLogin), tag: 200))
-        menu.addItem(item("回到主屏幕", action: #selector(returnToMainScreen)))
+
+        let settingsMenu = NSMenu(title: "设置")
+        settingsMenu.addItem(appearanceRoot)
+        settingsMenu.addItem(sizeRoot)
+        settingsMenu.addItem(.separator())
+        settingsMenu.addItem(item("暂停走动", action: #selector(toggleRoaming), tag: 190))
+        settingsMenu.addItem(item("登录时启动", action: #selector(toggleLaunchAtLogin), tag: 200))
+        settingsMenu.addItem(item("回到主屏幕", action: #selector(returnToMainScreen), tag: 210))
+        let settingsRoot = NSMenuItem(title: "设置", action: nil, keyEquivalent: "")
+        settingsRoot.tag = 340
+        settingsRoot.image = menuIcon("Settings")
+        menu.setSubmenu(settingsMenu, for: settingsRoot)
+        menu.addItem(settingsRoot)
         menu.addItem(.separator())
         menu.addItem(item("退出 Isaac Pet", action: #selector(quit), keyEquivalent: "q"))
 
@@ -258,6 +289,26 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
             }
         }
         statusItem.menu = menu
+    }
+
+    /// Menu roots carry a 16x16 pixel icon next to the attributed title. Native
+    /// menus take bitmaps only (no SVG, no recolourable artwork), so both
+    /// representations of the generated sheet are loaded into one NSImage and
+    /// Retina screens get the @2x one instead of an upscaled bitmap.
+    private func menuIcon(_ name: String) -> NSImage? {
+        guard let base = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "MenuIcons") else {
+            NSLog("menuIcon %@: base resource not found in MenuIcons/", name)
+            return nil
+        }
+        let icon = NSImage(contentsOf: base) ?? NSImage(size: NSSize(width: 16, height: 16))
+        icon.size = NSSize(width: 16, height: 16)
+        if let retinaURL = Bundle.main.url(forResource: "\(name)@2x", withExtension: "png", subdirectory: "MenuIcons"),
+           let retinaData = try? Data(contentsOf: retinaURL),
+           let retinaRep = NSBitmapImageRep(data: retinaData) {
+            icon.addRepresentation(retinaRep)
+        }
+        icon.isTemplate = false
+        return icon
     }
 
     private func item(
@@ -273,27 +324,29 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        menu.item(withTag: 300)?.title = isPlayMode ? "退出游玩模式（Esc）" : "进入游玩模式"
-        if let roaming = menu.item(withTag: 100) {
+        // NSMenu.item(withTag:) only inspects the receiver's direct items, and the
+        // grouped menu keeps most tagged items inside (nested) submenus.
+        menuItem(menu, withTag: 300)?.title = isPlayMode ? "退出游玩模式（Esc）" : "进入游玩模式"
+        if let roaming = menuItem(menu, withTag: 190) {
             roaming.title = settings.roamingEnabled ? "暂停走动" : "继续走动"
             roaming.isEnabled = !isPlayMode
         }
-        for tag in 110...114 { menu.item(withTag: tag)?.isEnabled = !isPlayMode }
-        for tag in 115...117 { menu.item(withTag: tag)?.isEnabled = !isPlayMode }
-        menu.item(withTag: 130)?.isEnabled = !isPlayMode
-        for tag in 118...119 { menu.item(withTag: tag)?.isEnabled = !isPlayMode && llmTask == nil }
+        for tag in 110...114 { menuItem(menu, withTag: tag)?.isEnabled = !isPlayMode }
+        for tag in 115...117 { menuItem(menu, withTag: tag)?.isEnabled = !isPlayMode }
+        menuItem(menu, withTag: 130)?.isEnabled = !isPlayMode
+        for tag in 118...119 { menuItem(menu, withTag: tag)?.isEnabled = !isPlayMode && llmTask == nil }
         // Never query Keychain while an NSMenu is tracking input. That can surface a
         // system authorization dialog behind the menu and leave its password field
         // without keyboard focus. The non-secret setting is updated only by explicit
         // LLM actions below.
-        menu.item(withTag: 120)?.isEnabled = !isPlayMode && llmConfigured
-        menu.item(withTag: 121)?.isEnabled = !isPlayMode && llmTask != nil
+        menuItem(menu, withTag: 120)?.isEnabled = !isPlayMode && llmConfigured
+        menuItem(menu, withTag: 121)?.isEnabled = !isPlayMode && llmTask != nil
         let personaName = PetAppearanceCatalog.definition(for: activeAppearance).personaName
-        menu.item(withTag: 118)?.title = "问 \(personaName)（LLM）…"
+        menuItem(menu, withTag: 118)?.title = "问 \(personaName)（LLM）…"
         let pendingTodoCount = TodoPolicy.pending(todoStore.items).count
-        menu.item(withTag: 400)?.title = pendingTodoCount == 0 ? "Todo" : "Todo（\(pendingTodoCount)）"
-        menu.item(withTag: 200)?.state = SMAppService.mainApp.status == .enabled ? .on : .off
-        for item in menu.items.compactMap(\.submenu).flatMap(\.items) {
+        menuItem(menu, withTag: 400)?.title = pendingTodoCount == 0 ? "Todo" : "Todo（\(pendingTodoCount)）"
+        menuItem(menu, withTag: 200)?.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        for item in flattenedItems(menu) {
             if [75, 100, 125].contains(item.tag) {
                 item.state = abs(CGFloat(item.tag) / 100 - settings.scale) < 0.01 ? .on : .off
             }
@@ -323,11 +376,29 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
                 }
             }
         }
-        for item in menu.items {
+        for item in flattenedItems(menu) {
             applyPixelTitle(item)
-            for subItem in item.submenu?.items ?? [] {
-                applyPixelTitle(subItem)
+        }
+    }
+
+    /// Depth-first search for a tagged item across the whole menu tree; the
+    /// grouped menu keeps tagged items below the top level.
+    private func menuItem(_ menu: NSMenu, withTag tag: Int) -> NSMenuItem? {
+        for item in menu.items {
+            if item.tag == tag { return item }
+            if let submenu = item.submenu, let found = menuItem(submenu, withTag: tag) {
+                return found
             }
+        }
+        return nil
+    }
+
+    /// Every item in the menu tree, grouped submenus included, so state and the
+    /// pixel titles reach items nested two levels deep.
+    private func flattenedItems(_ menu: NSMenu) -> [NSMenuItem] {
+        menu.items.flatMap { item in
+            guard let submenu = item.submenu else { return [item] }
+            return [item] + flattenedItems(submenu)
         }
     }
 
