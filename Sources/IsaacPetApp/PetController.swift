@@ -296,10 +296,13 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
     /// representations of the generated sheet are loaded into one NSImage and
     /// Retina screens get the @2x one instead of an upscaled bitmap.
     private func menuIcon(_ name: String) -> NSImage? {
-        guard let base = Bundle.main.url(forResource: name, withExtension: "png") else { return nil }
+        guard let base = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "MenuIcons") else {
+            NSLog("menuIcon %@: base resource not found in MenuIcons/", name)
+            return nil
+        }
         let icon = NSImage(contentsOf: base) ?? NSImage(size: NSSize(width: 16, height: 16))
         icon.size = NSSize(width: 16, height: 16)
-        if let retinaURL = Bundle.main.url(forResource: "\(name)@2x", withExtension: "png"),
+        if let retinaURL = Bundle.main.url(forResource: "\(name)@2x", withExtension: "png", subdirectory: "MenuIcons"),
            let retinaData = try? Data(contentsOf: retinaURL),
            let retinaRep = NSBitmapImageRep(data: retinaData) {
             icon.addRepresentation(retinaRep)
