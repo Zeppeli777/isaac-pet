@@ -29,6 +29,9 @@ fi
 if [ -d Resources/Cards ]; then
   cp -R Resources/Cards "$APP/Contents/Resources/Cards"
 fi
+if [ -d Resources/MenuIcons ]; then
+  cp -R Resources/MenuIcons "$APP/Contents/Resources/MenuIcons"
+fi
 
 /usr/bin/codesign --force --deep --sign - "$APP" >/dev/null
 /usr/bin/codesign --verify --deep --strict "$APP"
