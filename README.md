@@ -1,5 +1,7 @@
 # Isaac Pet
 
+[![CI](https://github.com/Zeppeli777/isaac-pet/actions/workflows/ci.yml/badge.svg)](https://github.com/Zeppeli777/isaac-pet/actions/workflows/ci.yml)
+
 一个面向桌面平台的非官方 Isaac 桌宠项目，使用项目中提供的《The Binding of Isaac: Rebirth》Isaac 像素素材制作。
 
 当前版本是原生 macOS 应用；仓库使用与平台无关的名称，后续可在同一项目中扩展 Windows 版本。

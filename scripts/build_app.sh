@@ -33,6 +33,14 @@ if [ -d Resources/MenuIcons ]; then
   cp -R Resources/MenuIcons "$APP/Contents/Resources/MenuIcons"
 fi
 
+# Optional release version stamping (e.g. ISAAC_APP_VERSION=v0.2.0 from CI); local
+# builds keep the Info.plist defaults.
+if [ -n "${ISAAC_APP_VERSION:-}" ]; then
+  VERSION="${ISAAC_APP_VERSION#v}"
+  /usr/bin/plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
+  /usr/bin/plutil -replace CFBundleVersion -string "$VERSION" "$APP/Contents/Info.plist"
+fi
+
 /usr/bin/codesign --force --deep --sign - "$APP" >/dev/null
 /usr/bin/codesign --verify --deep --strict "$APP"
 echo "Built: $APP"
