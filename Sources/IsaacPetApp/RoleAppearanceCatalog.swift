@@ -5,7 +5,21 @@ import IsaacPetCore
 enum PetAppearanceID: String, CaseIterable {
     case isaac
     case magdalene
+    case cain
     case judas
+    case blueBaby
+    case eve
+    case samson
+    case azazel
+    case lazarus
+    case eden
+    case theLost
+    case lilith
+    case keeper
+    case apollyon
+    case theForgotten
+    case bethany
+    case jacobEsau
 }
 
 struct PetAppearanceDefinition {
@@ -64,13 +78,153 @@ enum PetAppearanceCatalog {
             subdirectory: "Agents"
         ),
         PetAppearanceDefinition(
+            id: .cain,
+            displayName: "Cain",
+            personaName: "Cain",
+            spriteSheetResource: "cain-spritesheet",
+            shootingAtlasResource: "cain-shooting-atlas",
+            verticalWalkingResource: "cain-walking-vertical-atlas",
+            raisingAtlasResource: "cain-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
             id: .judas,
             displayName: "Judas",
             personaName: "Judas",
             spriteSheetResource: "judas-spritesheet",
-            shootingAtlasResource: nil,
-            verticalWalkingResource: nil,
-            raisingAtlasResource: nil,
+            shootingAtlasResource: "judas-shooting-atlas",
+            verticalWalkingResource: "judas-walking-vertical-atlas",
+            raisingAtlasResource: "judas-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .blueBaby,
+            displayName: "Blue Baby（???）",
+            personaName: "Blue Baby",
+            spriteSheetResource: "bluebaby-spritesheet",
+            shootingAtlasResource: "bluebaby-shooting-atlas",
+            verticalWalkingResource: "bluebaby-walking-vertical-atlas",
+            raisingAtlasResource: "bluebaby-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .eve,
+            displayName: "Eve",
+            personaName: "Eve",
+            spriteSheetResource: "eve-spritesheet",
+            shootingAtlasResource: "eve-shooting-atlas",
+            verticalWalkingResource: "eve-walking-vertical-atlas",
+            raisingAtlasResource: "eve-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .samson,
+            displayName: "Samson",
+            personaName: "Samson",
+            spriteSheetResource: "samson-spritesheet",
+            shootingAtlasResource: "samson-shooting-atlas",
+            verticalWalkingResource: "samson-walking-vertical-atlas",
+            raisingAtlasResource: "samson-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .azazel,
+            displayName: "Azazel",
+            personaName: "Azazel",
+            spriteSheetResource: "azazel-spritesheet",
+            shootingAtlasResource: "azazel-shooting-atlas",
+            verticalWalkingResource: "azazel-walking-vertical-atlas",
+            raisingAtlasResource: "azazel-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .lazarus,
+            displayName: "Lazarus",
+            personaName: "Lazarus",
+            spriteSheetResource: "lazarus-spritesheet",
+            shootingAtlasResource: "lazarus-shooting-atlas",
+            verticalWalkingResource: "lazarus-walking-vertical-atlas",
+            raisingAtlasResource: "lazarus-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .eden,
+            displayName: "Eden",
+            personaName: "Eden",
+            spriteSheetResource: "eden-spritesheet",
+            shootingAtlasResource: "eden-shooting-atlas",
+            verticalWalkingResource: "eden-walking-vertical-atlas",
+            raisingAtlasResource: "eden-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .theLost,
+            displayName: "The Lost",
+            personaName: "The Lost",
+            spriteSheetResource: "thelost-spritesheet",
+            shootingAtlasResource: "thelost-shooting-atlas",
+            verticalWalkingResource: "thelost-walking-vertical-atlas",
+            raisingAtlasResource: "thelost-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .lilith,
+            displayName: "Lilith",
+            personaName: "Lilith",
+            spriteSheetResource: "lilith-spritesheet",
+            shootingAtlasResource: "lilith-shooting-atlas",
+            verticalWalkingResource: "lilith-walking-vertical-atlas",
+            raisingAtlasResource: "lilith-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .keeper,
+            displayName: "Keeper",
+            personaName: "Keeper",
+            spriteSheetResource: "keeper-spritesheet",
+            shootingAtlasResource: "keeper-shooting-atlas",
+            verticalWalkingResource: "keeper-walking-vertical-atlas",
+            raisingAtlasResource: "keeper-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .apollyon,
+            displayName: "Apollyon",
+            personaName: "Apollyon",
+            spriteSheetResource: "apollyon-spritesheet",
+            shootingAtlasResource: "apollyon-shooting-atlas",
+            verticalWalkingResource: "apollyon-walking-vertical-atlas",
+            raisingAtlasResource: "apollyon-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .theForgotten,
+            displayName: "The Forgotten",
+            personaName: "The Forgotten",
+            spriteSheetResource: "theforgotten-spritesheet",
+            shootingAtlasResource: "theforgotten-shooting-atlas",
+            verticalWalkingResource: "theforgotten-walking-vertical-atlas",
+            raisingAtlasResource: "theforgotten-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .bethany,
+            displayName: "Bethany",
+            personaName: "Bethany",
+            spriteSheetResource: "bethany-spritesheet",
+            shootingAtlasResource: "bethany-shooting-atlas",
+            verticalWalkingResource: "bethany-walking-vertical-atlas",
+            raisingAtlasResource: "bethany-raising-atlas",
+            subdirectory: "Agents"
+        ),
+        PetAppearanceDefinition(
+            id: .jacobEsau,
+            displayName: "Jacob & Esau",
+            personaName: "Jacob & Esau",
+            spriteSheetResource: "jacobesau-spritesheet",
+            shootingAtlasResource: "jacobesau-shooting-atlas",
+            verticalWalkingResource: "jacobesau-walking-vertical-atlas",
+            raisingAtlasResource: "jacobesau-raising-atlas",
             subdirectory: "Agents"
         ),
     ]

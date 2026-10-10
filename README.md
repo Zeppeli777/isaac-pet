@@ -131,18 +131,13 @@ LLM 默认关闭，不影响本地气泡、Todo 或专注计时：
 
 专注计时完全在本机运行：从“专注计时”子菜单开始一个 15/25/45 分钟倒计时，可填写可选目标；运行中菜单会显示剩余时间，可随时取消；结束时弹窗提醒，并在授权后发送系统通知。倒计时状态保存在本机设置中，应用重启后会自动恢复未结束的时段。
 
-LLM 对话的人格提示词跟随当前桌宠形象：Isaac 天真爱哭，Magdalene 温柔体贴，Judas 机灵利落。人格只影响说话的语气，所有皮肤共享同样的能力边界——不能操作电脑、不调用工具、回答限 80 字，且只有用户主动提问时才联网。
+LLM 对话的人格提示词跟随当前桌宠形象：Isaac 天真爱哭，Magdalene 温柔体贴，Judas 机灵利落，Cain 爱炫得意，Blue Baby 冷面吐槽，Eve 嘴硬护短，Samson 热血上头，Azazel 傲娇小恶魔，Lazarus 打不倒，Eden 点子最多，The Lost 看得开，Lilith 温柔蒙眼，Keeper 精打细算，Apollyon 惜字如金，The Forgotten 倔强，Bethany 软和有盼头，Jacob & Esau 拌嘴双胞胎。人格只影响说话的语气，所有皮肤共享同样的能力边界——不能操作电脑、不调用工具、回答限 80 字，且只有用户主动提问时才联网。
 
 ## 多角色图集
 
-角色外观是纯视觉层：切换皮肤不会获得或失去任何读取、写入、联网或命令权限，只会改变对话人格。Isaac 是内置默认图集；其他角色需要单独通过图集 QA 后放入对应资源位置：
+角色外观是纯视觉层：切换皮肤不会获得或失去任何读取、写入、联网或命令权限，只会改变对话人格。Isaac 是内置默认图集；其余角色图集放在 `Resources/Agents/<role>-*.webp`（目前 Magdalene、Cain、Judas、Blue Baby、Eve、Samson、Azazel、Lazarus、Eden、The Lost、Lilith、Keeper、Apollyon、The Forgotten、Bethany、Jacob & Esau 共 16 套，均为表角色，不含堕化）。资源不存在的角色菜单项保持禁用，应用安全回退为 Isaac，不会把单帧或未验证图像误作完整角色皮肤。
 
-```text
-Resources/Agents/magdalene-spritesheet.webp
-Resources/Agents/judas-spritesheet.webp
-```
-
-每个图集必须是 `1536×2288` 的 8×11 WebP，兼容现有的 192×208 单元格、九组动画和 16 个视线方向。资源不存在时菜单项保持禁用，应用安全回退为 Isaac，不会把单帧或未验证图像误作完整角色皮肤。
+每个主图集必须是 `1536×2288` 的 8×11 WebP，兼容现有的 192×208 单元格、九组动画和 16 个视线方向；角色另带自己的射击（`<role>-shooting-atlas.webp`）、竖向行走（`<role>-walking-vertical-atlas.webp`）和举卡（`<role>-raising-atlas.webp`）辅助图集，缺失时回退 Isaac 的基础辅助图集。
 
 Magdalene 已具备完整桌宠图集：`Resources/Agents/magdalene-spritesheet.webp`。它以已审核的 Isaac 完整动作图集为身体、动作时序和注册位置基础，并将用户提供的 Golden Locks 原始像素按每个占用格的头部位置确定性叠加；不使用 AI 生成、重绘或插值。可用以下命令重建，并在 `qa/` 中检查接触表、方向表和校验报告：
 
@@ -153,7 +148,14 @@ MAG_PYTHON="/Users/zeppeli/.cache/codex-runtimes/codex-primary-runtime/dependenc
   Resources/Agents/magdalene-spritesheet.webp --require-v2
 ```
 
-原始角色图和 Golden Locks 条保存在 `Assets/Source/agents/`，不会被打进应用包。用户从菜单选择的外观会持久保存，同时决定对话人格；Magdalene 另有自己的射击、竖向行走和举卡辅助图集（`Resources/Agents/magdalene-shooting-atlas.webp`、`magdalene-walking-vertical-atlas.webp`、`magdalene-raising-atlas.webp`），由对应脚本派生；角色没有提供辅助图集时（如 Judas）仍安全回退 Isaac 的基础辅助图集。泪弹是共用的圆形道具。
+其余角色由 `scripts/derive_role_atlases.py` 从各自的原版玩家雪碧图（`Assets/Source/game-sheets/`）确定性派生：脚本在每个占用格里定位已审核的 Isaac 头部锚点，换成该角色同一语义位置的头帧，并按游戏 anm2 的 pivot 叠加默认装扮（Cain 眼罩、Judas 帽子、Eve/Eden/Bethany/Jacob 头发、Azazel 的角）；身体调色按两张雪碧图逐像素扫描建立 1:1 色板映射，Blue Baby、The Lost、Keeper、Azazel、Lilith、The Forgotten 等换色角色因此保持原版配色。Jacob & Esau 由同一管线派生出双身影同步合成。每个角色独立重建：
+
+```bash
+python3 scripts/derive_role_atlases.py            # 全部角色
+python3 scripts/derive_role_atlases.py --roles cain azazel
+```
+
+原始角色雪碧图和装扮条保存在 `Assets/Source/game-sheets/`，不会被打进应用包重复引用。用户从菜单选择的外观会持久保存，同时决定对话人格。泪弹是共用的圆形道具。
 
 塔罗牌内容与图标来自[以撒的结合中文维基](https://isaac.huijiwiki.com/wiki/卡牌)：44 张卡牌图标取自 wiki 的 `Cards_sprite.png`（即游戏内 HUD 卡面），名称、拾取语与使用效果整理自各卡牌页面，已静态收录为 `Sources/IsaacPetCore/TarotDeck.swift`。抽卡动画为双手举卡：前三帧取自已审核的点赞行，末帧由 character sheet 自带的「双手上举」小人按头/脚锚点合成（`scripts/derive_raising_atlas.py`，Magdalene 在合成帧上回贴自己的头部与头发）；卡牌在头顶绕竖轴旋转、放大展示后复原（`CardRevealController` 时间线驱动）；牌背图案按 wiki 的斜画牌背重排为正立 14×18（`scripts/generate_card_back.py`）。QA 接触表见 `qa/raising-atlas-contact-sheet.png`、`qa/tarot-icons-contact-sheet.png`、`qa/card-back-contact-sheet.png`。
 
