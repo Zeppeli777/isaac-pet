@@ -101,7 +101,7 @@ public sealed class SpriteAtlas
             throw new InvalidDataException($"上下行走姿态尺寸错误：{verticalWalking.PixelWidth}×{verticalWalking.PixelHeight}。");
         }
 
-        // 举臂辅助图集：角色可以自带（Magdalene），缺失时回退 Isaac 的基础图集。
+        // 举臂辅助图集：各角色可以自带，缺失时回退 Isaac 的基础图集。
         var raisingPath = raisingAtlasName == null
             ? Path.Combine(AssetsDirectory, "raising-atlas.png")
             : Path.Combine(sheetDirectory, raisingAtlasName + ".png");
