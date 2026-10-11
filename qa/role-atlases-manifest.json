@@ -1,0 +1,770 @@
+{
+  "ok": true,
+  "roles": [
+    {
+      "role": "cain",
+      "sheet": "character_003_cain.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/cain-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/cain-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/cain-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/cain-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/cain-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/cain-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/cain-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/cain-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "bluebaby",
+      "sheet": "character_006_bluebaby.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/bluebaby-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/bluebaby-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/bluebaby-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/bluebaby-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/bluebaby-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/bluebaby-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/bluebaby-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/bluebaby-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "eve",
+      "sheet": "character_005_eve.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/eve-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/eve-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/eve-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/eve-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/eve-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/eve-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/eve-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/eve-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "samson",
+      "sheet": "character_007_samson.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/samson-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/samson-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/samson-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/samson-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/samson-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/samson-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/samson-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/samson-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "azazel",
+      "sheet": "character_008_azazelhead.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/azazel-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/azazel-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/azazel-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/azazel-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/azazel-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/azazel-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/azazel-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/azazel-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "eden",
+      "sheet": "character_009_eden.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/eden-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/eden-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/eden-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/eden-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/eden-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/eden-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/eden-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/eden-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "lazarus",
+      "sheet": "character_009_lazarus.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/lazarus-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/lazarus-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/lazarus-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/lazarus-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/lazarus-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/lazarus-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/lazarus-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/lazarus-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "thelost",
+      "sheet": "character_012_thelost.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/thelost-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/thelost-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/thelost-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/thelost-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/thelost-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/thelost-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/thelost-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/thelost-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "lilith",
+      "sheet": "character_014_lilith.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/lilith-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/lilith-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/lilith-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/lilith-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/lilith-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/lilith-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/lilith-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/lilith-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "keeper",
+      "sheet": "character_015_keeper.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/keeper-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/keeper-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/keeper-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/keeper-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/keeper-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/keeper-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/keeper-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/keeper-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "apollyon",
+      "sheet": "character_016_apollyon.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/apollyon-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/apollyon-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/apollyon-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/apollyon-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/apollyon-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/apollyon-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/apollyon-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/apollyon-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "theforgotten",
+      "sheet": "character_017_theforgotten.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/theforgotten-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/theforgotten-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/theforgotten-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/theforgotten-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/theforgotten-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/theforgotten-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/theforgotten-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/theforgotten-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "bethany",
+      "sheet": "character_001x_bethany.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/bethany-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/bethany-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/bethany-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/bethany-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/bethany-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/bethany-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/bethany-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/bethany-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "jacobesau",
+      "sheet": "character_002x_jacob.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/jacobesau-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/jacobesau-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/jacobesau-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/jacobesau-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/jacobesau-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/jacobesau-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/jacobesau-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/jacobesau-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    },
+    {
+      "role": "judas",
+      "sheet": "character_004_judas.png",
+      "atlases": {
+        "spritesheet": {
+          "path": "Resources/Agents/judas-spritesheet.webp",
+          "size": [
+            1536,
+            2288
+          ],
+          "occupied_cells": 74,
+          "recolored_only_cells": 8,
+          "failures": [],
+          "contact_sheet": "qa/judas-spritesheet-contact.png"
+        },
+        "shooting_atlas": {
+          "path": "Resources/Agents/judas-shooting-atlas.webp",
+          "size": [
+            768,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/judas-shooting-atlas-contact.png"
+        },
+        "walking_vertical_atlas": {
+          "path": "Resources/Agents/judas-walking-vertical-atlas.webp",
+          "size": [
+            1536,
+            416
+          ],
+          "occupied_cells": 16,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/judas-walking-vertical-atlas-contact.png"
+        },
+        "raising_atlas": {
+          "path": "Resources/Agents/judas-raising-atlas.webp",
+          "size": [
+            1536,
+            208
+          ],
+          "occupied_cells": 4,
+          "recolored_only_cells": 0,
+          "failures": [],
+          "contact_sheet": "qa/judas-raising-atlas-contact.png"
+        }
+      },
+      "failures": []
+    }
+  ]
+}

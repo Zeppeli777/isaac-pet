@@ -12,10 +12,10 @@ Reads from the repository root:
     Resources/IsaacTear.png
     Resources/IsaacPet.png
     Resources/StatusIsaac.png
-    Resources/Agents/magdalene-spritesheet.webp
-    Resources/Agents/judas-spritesheet.webp
-    Resources/Agents/magdalene-shooting-atlas.webp
-    Resources/Agents/magdalene-walking-vertical-atlas.webp
+    Resources/Agents/<role>-spritesheet.webp（自动发现，如 magdalene / cain / judas…）
+    Resources/Agents/<role>-shooting-atlas.webp
+    Resources/Agents/<role>-walking-vertical-atlas.webp
+    Resources/Agents/<role>-raising-atlas.webp
 
 Writes into Windows/IsaacPet.Windows/Assets/.
 """
@@ -43,14 +43,12 @@ WEBP_ATLASES = {
     "raising-atlas.webp": (CELL_W * 8, CELL_H),
 }
 
-OPTIONAL_ATLASES = {
-    # 多角色图集：存在才转换，缺失时 Windows 端与 macOS 端一样回退为 Isaac。
-    "Agents/magdalene-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
-    "Agents/judas-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
-    # Magdalene 自带的辅助图集：缺失时回退 Isaac 的基础辅助图集。
-    "Agents/magdalene-shooting-atlas.webp": (CELL_W * 4, CELL_H),
-    "Agents/magdalene-walking-vertical-atlas.webp": (CELL_W * 8, CELL_H * 2),
-    "Agents/magdalene-raising-atlas.webp": (CELL_W * 8, CELL_H),
+# 角色专属图集按文件名后缀确定期望尺寸；存在才转换，缺失时两端一样回退为 Isaac。
+AGENT_SUFFIX_SIZES = {
+    "-spritesheet.webp": (CELL_W * 8, CELL_H * 11),
+    "-shooting-atlas.webp": (CELL_W * 4, CELL_H),
+    "-walking-vertical-atlas.webp": (CELL_W * 8, CELL_H * 2),
+    "-raising-atlas.webp": (CELL_W * 8, CELL_H),
 }
 
 # 塔罗卡面 HUD 图标（含卡背），直接复制进 Assets/Cards。
@@ -90,13 +88,17 @@ def main() -> int:
     for name, expected in WEBP_ATLASES.items():
         convert_webp(RESOURCES / name, OUT / (Path(name).stem + ".png"), expected)
 
-    for name, expected in OPTIONAL_ATLASES.items():
-        source = RESOURCES / name
-        if not source.exists():
-            print(f"skip  {name}（未安装，菜单项将保持禁用）")
-            continue
-        dest = OUT / source.parent.name / (source.stem + ".png")
-        convert_webp(source, dest, expected)
+    agents = RESOURCES / "Agents"
+    if agents.is_dir():
+        for source in sorted(agents.glob("*.webp")):
+            # Match on the suffix after the role id, e.g. "cain-shooting-atlas.webp".
+            suffix = "-" + source.stem.split("-", 1)[1] + source.suffix if "-" in source.stem else ""
+            expected = AGENT_SUFFIX_SIZES.get(suffix)
+            if expected is None:
+                print(f"skip  Agents/{source.name}（未知后缀）")
+                continue
+            dest = OUT / agents.name / (source.stem + ".png")
+            convert_webp(source, dest, expected)
 
     for name in PLAIN_COPIES:
         source = RESOURCES / name
