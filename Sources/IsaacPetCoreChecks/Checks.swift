@@ -515,7 +515,7 @@ enum IsaacPetCoreChecks {
             ]}
             """
             let anthropicText = try AnthropicMessagesCodec.decodeText(from: Data(anthropicResponseJSON.utf8))
-            check(anthropicText == "第一句\n第二句", "Anthropic decoder collects all text blocks")
+            check(anthropicText == "第一句第二句", "Anthropic decoder concatenates all text blocks")
             let anthropicErrorJSON = #"{"type":"error","error":{"message":"overloaded"}}"#
             check(
                 AnthropicMessagesCodec.decodeAPIError(from: Data(anthropicErrorJSON.utf8), statusCode: 529) == "overloaded",
@@ -594,9 +594,124 @@ enum IsaacPetCoreChecks {
             try configStore.delete()
             let deletedAgain = try configStore.load()
             check(deletedAgain == nil, "deleting a missing config file succeeds")
-            } catch {
-                failures.append("LLM connection config: \(error)")
+
+            // 11.5 LLM 回复解码：推理模型、数组 content、思考标签、预算截断
+            func decoded(_ format: LLMAPIFormat, _ json: String) -> String? {
+                try? LLMReplyDecoder.extractVisibleText(format: format, json: json)
             }
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"你好呀"}}]}"#) == "你好呀",
+                "OpenAI 标准字符串 content 解码"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"","reasoning_content":"先想想再回答"}}]}"#) == "先想想再回答",
+                "content 为空时退回 reasoning_content"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"答：在的","reasoning_content":"思考内容"}}]}"#) == "答：在的",
+                "有正文时不使用 reasoning_content"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":[{"type":"text","text":"分段"},{"type":"text","text":"回答"}]}}]}"#) == "分段回答",
+                "数组型 content 拼接"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"text":"旧版 completions 形态"}]}"#) == "旧版 completions 形态",
+                "兼容旧版 completions 的 text 字段"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"<think>先想想</think>答：在的"}}]}"#) == "答：在的",
+                "剥离思考标签"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"只剩思考没闭合<think>后面全是思考"}}]}"#) == "只剩思考没闭合",
+                "未闭合思考标签截断"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"<thinking>琢磨</thinking>答：在的"}}]}"#) == "答：在的",
+                "剥离 thinking 变体思考标签"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"<reasoning>推理</reasoning>答：在的"}}]}"#) == "答：在的",
+                "剥离 reasoning 变体思考标签"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"<think>先想</think>再想</think>答：在的"}}]}"#) == "再想</think>答：在的",
+                "连续思考块只删闭合部分"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"<think class=\"x\">琢磨</think>答：在的"}}]}"#) == "答：在的",
+                "思考标签容忍属性"
+            )
+            check(
+                decoded(.openai, #"{"choices":[{"message":{"content":"<thinkfactory>照常显示</thinkfactory>"}}]}"#) == "<thinkfactory>照常显示</thinkfactory>",
+                "词边界外的伪标签不剥离"
+            )
+            check(
+                LLMReplyDecoder.wasTruncated(format: .openai, json: #"{"choices":[{"finish_reason":"length","message":{"content":""}}]}"#),
+                "finish_reason=length 判定为截断"
+            )
+            check(
+                !LLMReplyDecoder.wasTruncated(format: .openai, json: #"{"choices":[{"finish_reason":"stop","message":{"content":"好的"}}]}"#),
+                "正常结束不判截断"
+            )
+            check(
+                LLMReplyDecoder.wasTruncated(format: .anthropic, json: #"{"stop_reason":"max_tokens","content":[]}"#),
+                "Anthropic stop_reason=max_tokens 判定为截断"
+            )
+            check(
+                !LLMReplyDecoder.hasVisibleContent(format: .openai, json: #"{"choices":[{"finish_reason":"length","message":{"content":"","reasoning_content":"全用在思考上"}}]}"#),
+                "只有思考内容时判定无正文（触发重试）"
+            )
+            check(
+                LLMReplyDecoder.hasVisibleContent(format: .openai, json: #"{"choices":[{"finish_reason":"length","message":{"content":"被截断的正文"}}]}"#),
+                "有正文时不触发重试"
+            )
+            check(
+                decoded(.anthropic, #"{"content":[{"type":"thinking","thinking":"……"},{"type":"text","text":"回答"}]}"#) == "回答",
+                "Anthropic 只取 text 块"
+            )
+            check(
+                decoded(.anthropic, #"{"content":[{"type":"thinking","thinking":"琢磨中"}]}"#) == "琢磨中",
+                "Anthropic 仅有 thinking 块时退回思考内容"
+            )
+            do {
+                _ = try LLMReplyDecoder.extractVisibleText(format: .openai, json: #"{"error":{"message":"quota exceeded"}}"#)
+                check(false, "API 错误原样抛出")
+            } catch {
+                check(error.localizedDescription.contains("quota exceeded"), "API 错误原样抛出")
+            }
+            do {
+                _ = try LLMReplyDecoder.extractVisibleText(format: .openai, json: #"{"choices":[]}"#)
+                check(false, "无文字时报错")
+            } catch {
+                check(error.localizedDescription.contains("没有返回可显示的文字"), "无文字时报错")
+            }
+            check(
+                LLMReplyDecoder.normalizeVisibleText("  多行\n\n\n文本  ") == "多行\n\n文本",
+                "压缩空行并去首尾空白"
+            )
+
+            // 11.6 模型列表解析与 /models 端点
+            let modelIDs = try LLMModelCatalog.parseIDs(#"{"data":[{"id":"b-model"},{"id":"a-model"},{"id":"b-model"}]}"#)
+            check(modelIDs.count == 2 && modelIDs.first == "a-model", "模型列表去重排序")
+            let topLevelModelIDs = try LLMModelCatalog.parseIDs(#"[{"id":"x"}]"#)
+            check(topLevelModelIDs.count == 1, "模型列表容忍顶层数组")
+            let emptyModelIDs = try LLMModelCatalog.parseIDs(#"{"object":"list","data":[]}"#)
+            check(emptyModelIDs.isEmpty, "空模型列表返回空")
+            check(LLMModelCatalog.count(fromJSON: "not json") == 0, "无法解析的模型列表按 0 处理")
+            check(
+                openAIConfig.modelsURL()?.absoluteString == "https://api.openai.com/v1/models",
+                "OpenAI /models 端点拼接"
+            )
+            check(
+                anthropicConfig.modelsURL()?.absoluteString == "https://api.anthropic.com/v1/models",
+                "Anthropic /models 端点自动补 /v1"
+            )
+            check(insecureConfig.modelsURL() == nil, "models builder rejects non-http schemes")
+        } catch {
+            failures.append("LLM connection config: \(error)")
+        }
 
         if failures.isEmpty {
             print("IsaacPetCoreChecks: all checks passed")
