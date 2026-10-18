@@ -1191,6 +1191,9 @@ final class PetController: NSObject, NSMenuDelegate, NSWindowDelegate, PetViewDe
         accessory.onError = { [weak self] title, message in
             self?.presentMessage(title: title, message: message)
         }
+        accessory.onInfo = { [weak self] title, message in
+            self?.presentMessage(title: title, message: message)
+        }
         let response = PixelDialog.presentForm(
             title: "可选 LLM 连接",
             message: """
