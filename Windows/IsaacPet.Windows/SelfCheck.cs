@@ -165,6 +165,77 @@ public static class SelfCheck
             Check(error.Message.Contains("JSON"), "导入非对象 JSON 报配置文件无效");
         }
 
+        // 11.5 LLM 回复解码：推理模型、数组 content、思考标签、预算截断
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"message":{"content":"你好呀"}}]}""") == "你好呀", "OpenAI 标准字符串 content 解码");
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"message":{"content":"","reasoning_content":"先想想再回答"}}]}""") == "先想想再回答",
+            "content 为空时退回 reasoning_content");
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"message":{"content":"答：在的","reasoning_content":"思考内容"}}]}""") == "答：在的",
+            "有正文时不使用 reasoning_content");
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"message":{"content":[{"type":"text","text":"分段"},{"type":"text","text":"回答"}]}}]}""") == "分段回答",
+            "数组型 content 拼接");
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"text":"旧版 completions 形态"}]}""") == "旧版 completions 形态",
+            "兼容旧版 completions 的 text 字段");
+        // 思考标签用 \u003c 转义拼接，避免测试数据里出现字面尖括号标签。
+        var thinkOpen = "\u003cthink\u003e";
+        var thinkClose = "\u003c/think\u003e";
+        var withThinkBlock = "{\"choices\":[{\"message\":{\"content\":\"" + thinkOpen + "先想想" + thinkClose + "答：在的\"}}]}";
+        var withUnclosedThink = "{\"choices\":[{\"message\":{\"content\":\"只剩思考没闭合" + thinkOpen + "后面全是思考\"}}]}";
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi, withThinkBlock) == "答：在的", "剥离思考标签");
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi, withUnclosedThink) == "只剩思考没闭合", "未闭合思考标签截断");
+        Check(Llm.LlmReplyDecoder.WasTruncated(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"finish_reason":"length","message":{"content":""}}]}"""),
+            "finish_reason=length 判定为截断");
+        Check(!Llm.LlmReplyDecoder.WasTruncated(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"finish_reason":"stop","message":{"content":"好的"}}]}"""),
+            "正常结束不判截断");
+        Check(Llm.LlmReplyDecoder.WasTruncated(Llm.LlmApiFormat.Anthropic,
+            """{"stop_reason":"max_tokens","content":[]}"""),
+            "Anthropic stop_reason=max_tokens 判定为截断");
+        Check(!Llm.LlmReplyDecoder.HasVisibleContent(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"finish_reason":"length","message":{"content":"","reasoning_content":"全用在思考上"}}]}"""),
+            "只有思考内容时判定无正文（触发重试）");
+        Check(Llm.LlmReplyDecoder.HasVisibleContent(Llm.LlmApiFormat.OpenAi,
+            """{"choices":[{"finish_reason":"length","message":{"content":"被截断的正文"}}]}"""),
+            "有正文时不触发重试");
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.Anthropic,
+            """{"content":[{"type":"thinking","thinking":"……"},{"type":"text","text":"回答"}]}""") == "回答",
+            "Anthropic 只取 text 块");
+        Check(Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.Anthropic,
+            """{"content":[{"type":"thinking","thinking":"琢磨中"}]}""") == "琢磨中",
+            "Anthropic 仅有 thinking 块时退回思考内容");
+        try
+        {
+            Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi, """{"error":{"message":"quota exceeded"}}""");
+            Check(false, "API 错误原样抛出");
+        }
+        catch (Exception error)
+        {
+            Check(error.Message.Contains("quota exceeded"), "API 错误原样抛出");
+        }
+        try
+        {
+            Llm.LlmReplyDecoder.ExtractVisibleText(Llm.LlmApiFormat.OpenAi, """{"choices":[]}""");
+            Check(false, "无文字时报错");
+        }
+        catch (Exception error)
+        {
+            Check(error.Message.Contains("没有返回可显示的文字"), "无文字时报错");
+        }
+        Check(Llm.LlmReplyDecoder.NormalizeVisibleText("  多行\n\n\n文本  ") == "多行\n\n文本", "压缩空行并去首尾空白");
+
+        // 11.6 模型列表解析与 /models 端点
+        var modelIds = Llm.LlmModelCatalog.ParseIds("""{"data":[{"id":"b-model"},{"id":"a-model"},{"id":"b-model"}]}""");
+        Check(modelIds.Count == 2 && modelIds[0] == "a-model", "模型列表去重排序");
+        Check(Llm.LlmModelCatalog.ParseIds("""[{"id":"x"}]""").Count == 1, "模型列表容忍顶层数组");
+        Check(Llm.LlmModelCatalog.ParseIds("""{"object":"list","data":[]}""").Count == 0, "空模型列表返回空");
+        Check(openAiConfig.ModelsUrl()?.ToString() == "https://api.openai.com/v1/models", "OpenAI /models 端点拼接");
+        Check(anthropicConfig.ModelsUrl()?.ToString() == "https://api.anthropic.com/v1/models", "Anthropic /models 端点自动补 /v1");
+
         // 12. 皮肤人格：每个形象都有包含人设要素的 system prompt
         foreach (PetAppearanceID appearance in Enum.GetValues<PetAppearanceID>())
         {

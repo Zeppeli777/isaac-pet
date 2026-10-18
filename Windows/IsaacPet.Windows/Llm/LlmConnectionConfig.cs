@@ -31,19 +31,39 @@ public sealed record LlmConnectionConfig
     /// <summary>规范化 Base URL 并拼接对应格式的端点。Anthropic 约定 Base URL 含 /v1，缺失时自动补上。</summary>
     public Uri? EndpointUrl()
     {
-        var base_ = NormalizeBaseUrl(BaseUrl);
-        if (base_.Length == 0 || !Uri.TryCreate(base_, UriKind.Absolute, out var uri) || uri.Host.Length == 0)
-        {
-            return null;
-        }
-        var scheme = uri.Scheme.ToLowerInvariant();
-        if (scheme != "https" && scheme != "http") return null;
+        var base_ = NormalizedBaseOrNull();
+        if (base_ == null) return null;
         var path = ApiFormat switch
         {
             LlmApiFormat.Anthropic => (base_.EndsWith("/v1") ? base_ : base_ + "/v1") + "/messages",
             _ => base_ + "/chat/completions",
         };
         return new Uri(path);
+    }
+
+    /// <summary>GET /models 端点：OpenAI 与 Anthropic 兼容服务都是这个约定，用于拉取可用模型。</summary>
+    public Uri? ModelsUrl()
+    {
+        var base_ = NormalizedBaseOrNull();
+        if (base_ == null) return null;
+        var path = ApiFormat switch
+        {
+            LlmApiFormat.Anthropic => (base_.EndsWith("/v1") ? base_ : base_ + "/v1") + "/models",
+            _ => base_ + "/models",
+        };
+        return new Uri(path);
+    }
+
+    /// <summary>去掉结尾斜杠并校验 http(s)  scheme 与主机名；无效返回 null。</summary>
+    private string? NormalizedBaseOrNull()
+    {
+        var base_ = NormalizeBaseUrl(BaseUrl);
+        if (base_.Length == 0 || !Uri.TryCreate(base_, UriKind.Absolute, out var uri) || uri.Host.Length == 0)
+        {
+            return null;
+        }
+        var scheme = uri.Scheme.ToLowerInvariant();
+        return scheme == "https" || scheme == "http" ? base_ : null;
     }
 
     public void Validate()

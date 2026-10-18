@@ -19,7 +19,7 @@ macOS 原生桌宠（`Sources/`）的 Windows 移植，使用 **.NET 8 + WPF** �
 | 大小切换 / 暂停走动 / 回到主屏幕 | ✅ | ✅ |
 | 登录时启动 | ✅ SMAppService | ✅ 注册表 Run 键 |
 | 菜单栏图标 | ✅ NSStatusItem | ✅ 系统托盘（NotifyIcon） |
-| LLM 对话（OpenAI / Anthropic 兼容，可配 Base URL） | ✅ 配置文件 | ✅ DPAPI 加密落盘（不学 macOS 的明文 Key 文件） |
+| LLM 对话（OpenAI / Anthropic 兼容，可配 Base URL） | ✅ 配置文件 | ✅ DPAPI 加密落盘（不学 macOS 的明文 Key 文件）+ 服务商预设 + 测试连接 + 拉取模型列表 + 推理模型兼容 |
 | 皮肤 = 形象 + 人格提示词（问 {persona}（LLM）…） | ✅ | ✅（17 套人格，覆盖全部可选外观：Isaac / Magdalene / Cain / Judas / Blue Baby / Eve / Samson / Azazel / Lazarus / Eden / The Lost / Lilith / Keeper / Apollyon / The Forgotten / Bethany / Jacob & Esau） |
 | 各角色专属射击 / 竖走 / 举臂辅助图集 | ✅ | ✅（缺失时回退 Isaac 基础图集） |
 | Apple 提醒事项同步 | ✅ | ➖ 平台不支持 |
@@ -47,7 +47,7 @@ Windows\scripts\build_windows.bat
 IsaacPet.exe --self-check
 ```
 
-自检对应 macOS 版的 `IsaacPetCoreChecks`：校验图集尺寸、动画规格（含竖走 8 列与举臂图集）、8 方向/4 射击列映射、Direction8 角度换算、动画帧索引、Todo 排序/合并/提醒去重、气泡与表情策略、游玩输入向量、LLM 连接配置、皮肤人格、专注计时策略、塔罗牌组与抽卡策略。全部通过退出码为 0。
+自检对应 macOS 版的 `IsaacPetCoreChecks`：校验图集尺寸、动画规格（含竖走 8 列与举臂图集）、8 方向/4 射击列映射、Direction8 角度换算、动画帧索引、Todo 排序/合并/提醒去重、气泡与表情策略、游玩输入向量、LLM 连接配置与回复解码（reasoning_content / 数组 content / 思考标签 / 预算截断重试判定）、皮肤人格、专注计时策略、塔罗牌组与抽卡策略。全部通过退出码为 0。
 
 自动化/测试可用参数：`--self-check`、`--show-todos`、`--show-tarot`；专注计时支持 `ISAAC_FOCUS_DURATION_SECONDS` 环境变量注入测试时长。
 
