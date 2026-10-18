@@ -57,6 +57,7 @@ public sealed class LlmService
 
         var dialog = new LlmSettingsDialog(
             hasSavedToken: existingToken != null,
+            savedToken: existingToken,
             baseUrl: _settings.LlmBaseUrl,
             apiFormat: _settings.LlmApiFormat == "anthropic" ? LlmApiFormat.Anthropic : LlmApiFormat.OpenAi,
             currentModel: _settings.LlmModel);
